@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     if not public_url:
         raise RuntimeError("Public URL is not set")
 
-    bot_webhook_url = f"{public_url}/{settings.TELEGRAM_WEBHOOK_URL}"
+    bot_webhook_url = f"{public_url}{settings.TELEGRAM_WEBHOOK_PATH}"
 
     await bot.delete_webhook(drop_pending_updates=True)
     await bot.set_webhook(

@@ -5,11 +5,17 @@ services:
     container_name: bot_template_app
     env_file:
       - .env
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build:
+      context: .
+    container_name: bot_template_worker
+    command: python -m app.workers.main
+    env_file:
+      - .env
     depends_on:
       - postgres
       - redis
@@ -23,39 +29,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
     container_name: bot_template_redis
-    restart: always
     volumes:
       - redis_data:/data
-
-  worker:
-    build: .
-    container_name: bot_template_worker
-    command: python -m app.workers.main
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-      - redis
-
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: bot_template_ngrok
-    env_file:
-      - .env
-    command: http app:8000
-    ports:
-      - "4040:4040"
-    depends_on:
-      - app
 
 volumes:
   postgres_data:

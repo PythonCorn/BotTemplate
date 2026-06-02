@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     PUBLIC_URL: str | None = None
 
     BOT_TOKEN: str = ""
-    TELEGRAM_WEBHOOK_URL: str | None = None
+    TELEGRAM_WEBHOOK_PATH: str | None = None
     TELEGRAM_WEBHOOK_SECRET_TOKEN: str | None = None
     TELEGRAM_WEBHOOK_IP_ADDRESS: str | None = None
 

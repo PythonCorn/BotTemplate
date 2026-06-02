@@ -1,0 +1,31 @@
+services:
+  app:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  worker:
+    volumes:
+      - .:/app
+    command: python -m app.workers.main
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: bot_template_ngrok
+    env_file:
+      - .env
+    command: http app:8000
+    ports:
+      - "4040:4040"
+    depends_on:
+      - app
