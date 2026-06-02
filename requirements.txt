@@ -9,3 +9,4 @@ psycopg2-binary==2.9.12
 pydantic-settings==2.14.1
 redis==8.0.0
 SQLAlchemy==2.0.50
+uvicorn==0.48.0
