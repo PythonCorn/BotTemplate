@@ -1,5 +1,3 @@
-from app.httpx_service import HttpxService
-
 from typing import Protocol
 
 
@@ -9,7 +7,7 @@ class ClosableService(Protocol):
 
 
 class Container:
-    def __init__(self, *services: HttpxService, **kwargs):
+    def __init__(self, *services: ClosableService, **kwargs):
         self.services = services
         self.kwargs = kwargs
 
