@@ -1,15 +1,18 @@
-from typing import Protocol
+from dataclasses import dataclass
+
+from aiogram import Bot, Dispatcher
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
-class ClosableService(Protocol):
-    async def close(self) -> None: ...
-
-
+@dataclass(slots=True)
 class Container:
-    def __init__(self, *services: ClosableService, **kwargs):
-        self.services = services
-        self.kwargs = kwargs
+    bot: Bot
+    dp: Dispatcher
+    redis: Redis
+    session_factory: async_sessionmaker[AsyncSession]
 
-    async def shutdown(self):
-        for service in self.services:
-            await service.close()
+    async def shutdown(self) -> None:
+        await self.redis.aclose()
+        if self.bot.session is not None:
+            await self.bot.session.close()

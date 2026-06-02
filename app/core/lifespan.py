@@ -11,10 +11,11 @@ from redis.asyncio import Redis
 from app.bot.core.setup_bot_routers import setup_bot_routers
 from app.bot.middlewares.redis_middleware import RedisMiddleware
 from app.bot.middlewares.unit_of_work_middleware import UnitOfWorkMiddleware
-from app.core.cache.redis import RedisCache
+from app.core.app_state import AppState
 from app.core.config import settings
-from app.core.states.app_state import AppState
+from app.core.container import Container
 from app.database.session import async_engine, async_session_factory
+from app.infrastructure.cache.redis import RedisCache
 from app.ngrok.get_ngrok_url import get_ngrok_public_url
 
 logger = logging.getLogger(__name__)
@@ -31,10 +32,10 @@ async def lifespan(app: FastAPI):
         password=settings.REDIS_PASSWORD or None,
     )
     redis_cache = RedisCache(redis=redis)
-    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     storage = RedisStorage(redis=redis, state_ttl=60 * 60 * 2)
 
+    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=storage)
 
     dp.update.middleware(UnitOfWorkMiddleware(async_session_factory=async_session_factory))
@@ -60,7 +61,9 @@ async def lifespan(app: FastAPI):
 
     logger.info("Telegram webhook configured: %s", bot_webhook_url)
 
-    app.state.app_state = AppState(bot=bot, dp=dp, redis=redis)
+    container = Container(bot=bot, dp=dp, redis=redis, session_factory=async_session_factory)
+
+    app.state.app_state = AppState(container=container)
 
     try:
         logger.info("Application startup completed")

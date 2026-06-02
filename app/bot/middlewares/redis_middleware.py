@@ -4,7 +4,7 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 
-from app.core.cache.redis import RedisCache
+from app.infrastructure.cache.redis import RedisCache
 
 
 class RedisMiddleware(BaseMiddleware):

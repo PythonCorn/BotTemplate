@@ -1,10 +1,8 @@
 import logging
 
-from fastapi import FastAPI
-
 from app.api import health, webhook
+from app.api.factory import create_app
 from app.core.config import settings
-from app.core.lifespan import lifespan
 from app.core.logger import setup_logging
 
 setup_logging(
@@ -13,7 +11,7 @@ setup_logging(
 )
 
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Bot Template", lifespan=lifespan)
+app = create_app()
 
 app.include_router(router=webhook.router)
 app.include_router(router=health.router)

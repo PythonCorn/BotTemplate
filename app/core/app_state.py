@@ -1,6 +1,13 @@
+from dataclasses import dataclass
+
 from fastapi import Request
 
-from app.core.states.app_state import AppState
+from app.core.container import Container
+
+
+@dataclass(slots=True)
+class AppState:
+    container: Container
 
 
 def get_app_state(request: Request) -> AppState:

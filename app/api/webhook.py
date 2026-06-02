@@ -1,9 +1,8 @@
 from aiogram.types import Update
 from fastapi import APIRouter, Request, Response
 
+from app.core.app_state import AppState, get_app_state
 from app.core.config import settings
-from app.core.states.app_state import AppState
-from app.core.states.get_app_state import get_app_state
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
@@ -21,9 +20,9 @@ async def webhook_bot(request: Request):
 
     update = Update.model_validate(
         update_data,
-        context={"bot": state.bot},
+        context={"bot": state.container.bot},
     )
 
-    await state.dp.feed_update(state.bot, update)
+    await state.container.dp.feed_update(state.container.bot, update)
 
     return {"ok": True}
