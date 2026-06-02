@@ -8,9 +8,10 @@ from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from app.bot.middlewares.redis_middleware import RedisMiddleware
-from app.bot.middlewares.unit_or_work_middleware import UnitOrWorkMiddleware
+from app.bot.middlewares.unit_of_work_middleware import UnitOfWorkMiddleware
 from app.core.cache.redis import RedisCache
 from app.core.config import settings
+from app.core.setup_bot_routers import setup_bot_routers
 from app.core.states.app_state import AppState
 from app.database.session import async_session_factory
 
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI):
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
         db=settings.REDIS_DB,
-        password=settings.REDIS_PASSWORD
+        password=settings.REDIS_PASSWORD,
     )
     redis_cache = RedisCache(redis=redis)
     bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -30,10 +31,10 @@ async def lifespan(app: FastAPI):
 
     dp = Dispatcher(storage=storage)
 
-    dp.update.middleware(UnitOrWorkMiddleware(async_session_factory=async_session_factory))
+    dp.update.middleware(UnitOfWorkMiddleware(async_session_factory=async_session_factory))
     dp.update.middleware(RedisMiddleware(redis=redis_cache))
 
-    dp.include_routers()
+    setup_bot_routers(dispatcher=dp)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await bot.set_webhook(
@@ -45,7 +46,7 @@ async def lifespan(app: FastAPI):
     )
 
     app.state.app_state = AppState(bot=bot, dp=dp, redis=redis)
-    
+
     try:
         yield
     finally:
@@ -53,3 +54,4 @@ async def lifespan(app: FastAPI):
         if bot.session is not None:
             await bot.session.close()
         await storage.close()
+        await redis.aclose()

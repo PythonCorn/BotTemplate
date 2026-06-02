@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Type
+from typing import Any, TypeVar
 
 import orjson
 from pydantic import BaseModel
@@ -11,15 +11,18 @@ class RedisCache:
     def __init__(self, redis: Redis):
         self.redis = redis
 
-    async def set(self, name: str, value: bytes | bytearray | str | int | float | list[T] | T, ttl: int | None = None):
+    async def set(
+        self,
+        name: str,
+        value: bytes | bytearray | str | int | float | list[T] | T,
+        ttl: int | None = None,
+    ):
         value = self._reformat_value_to_json(value)
-        await self.redis.set(
-            name=name,
-            value=value,
-            ex=ttl
-        )
+        await self.redis.set(name=name, value=value, ex=ttl)
 
-    async def get(self, name: str, response_model: Type[T] | list[Type[T]] | None = None) -> Any | list[T] | T | None:
+    async def get(
+        self, name: str, response_model: type[T] | list[type[T]] | None = None
+    ) -> Any | list[T] | T | None:
         value = await self.redis.get(name)
         if value is None:
             return None
@@ -30,7 +33,9 @@ class RedisCache:
         return value
 
     @staticmethod
-    def _reformat_value_to_pydantic(value: bytes | str, response_model: Type[T] | list[Type[T]]) -> T | list[T]:
+    def _reformat_value_to_pydantic(
+        value: bytes | str, response_model: type[T] | list[type[T]]
+    ) -> T | list[T]:
         value = orjson.loads(value)
         if isinstance(response_model, list):
             return [response_model[0].model_validate(v) for v in value]
@@ -38,16 +43,18 @@ class RedisCache:
 
     @staticmethod
     def _reformat_value_to_json(
-            value: bytes | bytearray | str | int | float | list[T] | T
+        value: bytes | bytearray | str | int | float | list[T] | T,
     ) -> bytes | bytearray | str | int | float:
 
         if isinstance(value, BaseModel):
             return orjson.dumps(value.model_dump(mode="json"))
 
         if isinstance(value, list):
-            return orjson.dumps([
-                item.model_dump(mode="json") if isinstance(item, BaseModel) else item
-                for item in value
-            ])
+            return orjson.dumps(
+                [
+                    item.model_dump(mode="json") if isinstance(item, BaseModel) else item
+                    for item in value
+                ]
+            )
 
         return value

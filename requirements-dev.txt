@@ -1,0 +1,5 @@
+ruff==0.15.15
+mypy==2.1.0
+pytest==9.0.3
+pytest-asyncio
+pre-commit==4.6.0

@@ -1,6 +1,7 @@
-from typing import TypeVar, Generic, Sequence
+from collections.abc import Sequence
+from typing import TypeVar
 
-from sqlalchemy import select, exists, func
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base import BaseModel
@@ -8,11 +9,11 @@ from app.database.base import BaseModel
 T = TypeVar("T", bound=BaseModel)
 
 
-class BaseRepository(Generic[T]):
+class BaseRepository[T: BaseModel]:
     def __init__(
-            self,
-            session: AsyncSession,
-            model: type[T],
+        self,
+        session: AsyncSession,
+        model: type[T],
     ):
         self.session = session
         self.model = model
@@ -26,10 +27,10 @@ class BaseRepository(Generic[T]):
         return await self.session.get(self.model, model_id)
 
     async def get_all(
-            self,
-            *,
-            limit: int | None = None,
-            offset: int | None = None,
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> Sequence[T]:
         stmt = select(self.model)
 
@@ -43,9 +44,7 @@ class BaseRepository(Generic[T]):
         return result.all()
 
     async def exists_by_id(self, model_id: int) -> bool:
-        stmt = select(
-            exists().where(self.model.id == model_id)
-        )
+        stmt = select(exists().where(self.model.id == model_id))
 
         return bool(await self.session.scalar(stmt))
 
@@ -66,5 +65,3 @@ class BaseRepository(Generic[T]):
 
         await self.delete(instance)
         return True
-
-

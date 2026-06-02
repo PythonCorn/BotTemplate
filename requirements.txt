@@ -1,0 +1,11 @@
+aiogram==3.28.2
+alembic==1.18.4
+asyncpg==0.31.0
+babel==2.18.0
+fastapi==0.136.3
+httpx==0.28.1
+orjson==3.11.9
+psycopg2-binary==2.9.12
+pydantic-settings==2.14.1
+redis==8.0.0
+SQLAlchemy==2.0.50

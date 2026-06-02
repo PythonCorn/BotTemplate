@@ -1,7 +1,6 @@
 from aiogram.types import Update
 from fastapi import APIRouter, Request, Response
 
-
 from app.core.config import settings
 from app.core.states.app_state import AppState
 from app.core.states.get_app_state import get_app_state
@@ -15,11 +14,13 @@ async def webhook_bot(request: Request):
 
     secret_token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
 
-    if secret_token != settings.TELEGRAM_WEBHOOK_SECRET:
+    if secret_token != settings.TELEGRAM_WEBHOOK_SECRET_TOKEN:
         return Response(status_code=403)
 
+    update_data = await request.json()
+
     update = Update.model_validate(
-        await request.json(),
+        update_data,
         context={"bot": state.bot},
     )
 
