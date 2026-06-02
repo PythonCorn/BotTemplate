@@ -2,8 +2,7 @@ from typing import Protocol
 
 
 class ClosableService(Protocol):
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
 
 class Container:
@@ -14,4 +13,3 @@ class Container:
     async def shutdown(self):
         for service in self.services:
             await service.close()
-
