@@ -14,7 +14,7 @@ from app.bot.middlewares.unit_of_work_middleware import UnitOfWorkMiddleware
 from app.core.cache.redis import RedisCache
 from app.core.config import settings
 from app.core.states.app_state import AppState
-from app.database.session import async_session_factory
+from app.database.session import async_engine, async_session_factory
 from app.ngrok.get_ngrok_url import get_ngrok_public_url
 
 logger = logging.getLogger(__name__)
@@ -72,4 +72,5 @@ async def lifespan(app: FastAPI):
             await bot.session.close()
         await storage.close()
         await redis.aclose()
+        await async_engine.dispose()
         logger.info("Application shutdown completed")

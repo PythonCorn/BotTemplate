@@ -32,10 +32,19 @@ services:
     image: redis:7
     container_name: bot_template_redis
     restart: always
-#    ports:
-#      - "6379:6379"
     volumes:
       - redis_data:/data
+
+  worker:
+    build: .
+    container_name: bot_template_worker
+    command: python -m app.workers.main
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
 
   ngrok:
     image: ngrok/ngrok:latest
