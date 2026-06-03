@@ -16,7 +16,12 @@ COMPOSE := docker compose
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
-ALEMBIC=$(COMPOSE_DEV) exec app alembic -c alembic.ini
+SERVICE := app
+
+ALEMBIC=$(COMPOSE_DEV) exec $(SERVICE) alembic -c alembic.ini
+
+LOCALES_DIR = $(SERVICE)/locales
+POT_FILE = $(LOCALES_DIR)/messages.pot
 
 # =========================
 # Help
@@ -263,3 +268,29 @@ clean:
 	find . -type d -name ".mypy_cache" -exec rm -rf {} +
 	find . -type d -name ".ruff_cache" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+# ---------- I18N ----------
+
+extract:
+	$(COMPOSE_DEV) exec $(SERVICE) pybabel extract -F babel.cfg -o $(POT_FILE) .
+
+update:
+	$(COMPOSE_DEV) exec $(SERVICE) pybabel update -i $(POT_FILE) -d $(LOCALES_DIR)
+
+compile:
+	$(COMPOSE_DEV) exec $(SERVICE) pybabel compile -d $(LOCALES_DIR)
+
+add_lang:
+	@if "$(code)"=="" ( \
+		echo Locale code is required: make add_lang code=de && \
+		exit /b 1 \
+	)
+	@if not exist "$(POT_FILE)" ( \
+		echo messages.pot not found. Running extract... && \
+		$(COMPOSE_DEV) exec $(SERVICE) pybabel extract -F babel.cfg -o $(POT_FILE) . \
+	)
+	@if exist "$(LOCALES_DIR)\$(code)" ( \
+		echo Locale $(code) already exists. && \
+		exit /b 1 \
+	)
+	$(COMPOSE_DEV) exec $(SERVICE) pybabel init -i $(POT_FILE) -d $(LOCALES_DIR) -l $(code)

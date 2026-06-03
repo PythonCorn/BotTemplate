@@ -12,3 +12,6 @@ class UserService:
             user = await self.uow.users.add(User(user_id=user_id, username=username))
             await self.uow.commit()
         return user
+
+    async def get_user_language(self, user_id: int) -> str:
+        return await self.uow.users.get_user_language(user_id)

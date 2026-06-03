@@ -5,11 +5,13 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.utils.i18n import I18n
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from app.bot.core.setup_bot_routers import setup_bot_routers
 from app.bot.handlers import start_handler
+from app.bot.middlewares.language_middleware import LanguageMiddleware
 from app.bot.middlewares.redis_middleware import RedisMiddleware
 from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.core.app_state import AppState
@@ -38,9 +40,11 @@ async def lifespan(app: FastAPI):
 
     bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=storage)
+    i18n = I18n(path="app/locales", default_locale="ru")
 
     dp.update.middleware(RedisMiddleware(redis=redis_cache))
     dp.update.middleware(ServiceMiddleware(async_session_factory=async_session_factory))
+    dp.update.middleware(LanguageMiddleware(i18n=i18n))
 
     setup_bot_routers(start_handler.router, dispatcher=dp)
 
