@@ -6,6 +6,7 @@ from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot.core.chat_service import ChatService
+from app.bot.windows.container import WindowsContainer
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.cache.redis import RedisCache
 from app.infrastructure.payments.container import PaymentContainer
@@ -19,11 +20,13 @@ class ServiceMiddleware(BaseMiddleware):
         redis: RedisCache,
         payment_container: PaymentContainer,
         chat_service: ChatService,
+        windows_container: WindowsContainer,
     ):
         self.async_session_factory = async_session_factory
         self.redis = redis
         self.payment_container = payment_container
         self.chat_service = chat_service
+        self.windows_container = windows_container
 
     async def __call__(
         self,
@@ -37,5 +40,6 @@ class ServiceMiddleware(BaseMiddleware):
                 redis=self.redis,
                 payment_container=self.payment_container,
                 chat_service=self.chat_service,
+                windows_container=self.windows_container,
             )
             return await handler(event, data)

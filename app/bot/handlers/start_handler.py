@@ -21,4 +21,8 @@ async def pushed_start(msg: Message, services: ServiceContainer):
     )
     member = await services.bot.get_user_in_chat(chat_id=-1003731639160, user_id=user.user_id)
     logger.info(f"User {user.user_id} is in chat: {member}")
-    await msg.answer("Hello, world!")
+    photo = await services.photo_formatter.get_photo("example.png")
+    message = await msg.answer_photo(
+        **services.windows.example.start(username=user.username), photo=photo
+    )
+    await services.photo_formatter.save_photo_in_cache(message, "example.png")

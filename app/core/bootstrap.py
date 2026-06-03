@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 from app.bot.core.chat_service import ChatService
 from app.bot.middlewares.language_middleware import LanguageMiddleware
 from app.bot.middlewares.service_middleware import ServiceMiddleware
+from app.bot.windows.container import WindowsContainer
 from app.core.config import settings
 from app.core.container import Container
 from app.database.session import async_session_factory
@@ -54,6 +55,10 @@ def _setup_i18n(dispatcher: Dispatcher):
     dispatcher.update.middleware(LanguageMiddleware(i18n=i18n))
 
 
+def _get_windows_container() -> WindowsContainer:
+    return WindowsContainer()
+
+
 def _setup_service_middleware(
     dispatcher: Dispatcher,
     redis: Redis,
@@ -66,6 +71,7 @@ def _setup_service_middleware(
             redis=RedisCache(redis=redis),
             payment_container=payment_container,
             chat_service=chat_service,
+            windows_container=_get_windows_container(),
         )
     )
 

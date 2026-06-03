@@ -1,6 +1,8 @@
 from functools import cached_property
 
 from app.bot.core.chat_service import ChatService
+from app.bot.core.file_formatting import FileFormatting
+from app.bot.windows.container import WindowsContainer
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.cache.redis import RedisCache
 from app.infrastructure.payments.container import PaymentContainer
@@ -14,11 +16,14 @@ class ServiceContainer:
         redis: RedisCache,
         payment_container: PaymentContainer,
         chat_service: ChatService,
+        windows_container: WindowsContainer,
     ):
         self.uow = uow
         self.redis = redis
         self._payment_container = payment_container
         self._chat_service = chat_service
+        self._windows_container = windows_container
+        self.photo_formatter = FileFormatting(redis=redis.redis)
 
     @cached_property
     def users(self) -> UserService:
@@ -35,3 +40,7 @@ class ServiceContainer:
     @property
     def bot(self) -> ChatService:
         return self._chat_service
+
+    @property
+    def windows(self) -> WindowsContainer:
+        return self._windows_container
