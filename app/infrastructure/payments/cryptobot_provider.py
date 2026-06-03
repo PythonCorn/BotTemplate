@@ -22,7 +22,7 @@ class CryptobotProvider(PaymentProvider):
         if self.token is None:
             self.is_work = False
             return
-        self.name_provider = PaymentName.cryptobot
+        self.name_provider: PaymentName = PaymentName.cryptobot
         self.provider = AioCryptoPay(token=self.token, network=Networks.MAIN_NET)
 
     async def create_invoice(
