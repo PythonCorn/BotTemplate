@@ -26,6 +26,8 @@ class Settings(BaseSettings):
 
     NGROK_AUTHTOKEN: str | None = None
 
+    CRYPTOBOT_TOKEN: str | None = None
+
     @property
     def POSTGRES_URI(self):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

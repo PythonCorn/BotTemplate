@@ -1,84 +1,37 @@
 import logging
 from contextlib import asynccontextmanager
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.redis import RedisStorage
-from aiogram.utils.i18n import I18n
+from aiogram import Router
 from fastapi import FastAPI
-from redis.asyncio import Redis
 
-from app.bot.core.setup_bot_routers import setup_bot_routers
+from app.bot.core.shutdown import shutdown_container
+from app.bot.core.webhook import setup_telegram_webhook
 from app.bot.handlers import start_handler
-from app.bot.middlewares.language_middleware import LanguageMiddleware
-from app.bot.middlewares.redis_middleware import RedisMiddleware
-from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.core.app_state import AppState
-from app.core.config import settings
+from app.core.bootstrap import create_container
 from app.core.container import Container
-from app.database.session import async_engine, async_session_factory
-from app.infrastructure.cache.redis import RedisCache
-from app.ngrok.get_ngrok_url import get_ngrok_public_url
 
 logger = logging.getLogger(__name__)
+
+
+# Include your bot routes here
+BOT_ROUTERS: list[Router] = [start_handler.router]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup started")
 
-    redis = Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        db=settings.REDIS_DB,
-        password=settings.REDIS_PASSWORD or None,
-    )
-    redis_cache = RedisCache(redis=redis)
-
-    storage = RedisStorage(redis=redis, state_ttl=60 * 60 * 2)
-
-    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher(storage=storage)
-    i18n = I18n(path="app/locales", default_locale="ru")
-
-    dp.update.middleware(RedisMiddleware(redis=redis_cache))
-    dp.update.middleware(ServiceMiddleware(async_session_factory=async_session_factory))
-    dp.update.middleware(LanguageMiddleware(i18n=i18n))
-
-    setup_bot_routers(start_handler.router, dispatcher=dp)
-
-    public_url = settings.PUBLIC_URL or await get_ngrok_public_url()
-
-    if not public_url:
-        raise RuntimeError("Public URL is not set")
-
-    bot_webhook_url = f"{public_url}{settings.TELEGRAM_WEBHOOK_PATH}"
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    await bot.set_webhook(
-        url=bot_webhook_url,
-        secret_token=settings.TELEGRAM_WEBHOOK_SECRET_TOKEN,
-        ip_address=settings.TELEGRAM_WEBHOOK_IP_ADDRESS or None,
-        allowed_updates=dp.resolve_used_update_types(),
-        drop_pending_updates=True,
-    )
-
-    logger.info("Telegram webhook configured: %s", bot_webhook_url)
-
-    container = Container(bot=bot, dp=dp, redis=redis, session_factory=async_session_factory)
+    container: Container = create_container(BOT_ROUTERS)
 
     app.state.app_state = AppState(container=container)
+
+    await setup_telegram_webhook(container=container)
 
     try:
         logger.info("Application startup completed")
         yield
     finally:
         logger.info("Application shutdown started")
-        await bot.delete_webhook()
-        if bot.session is not None:
-            await bot.session.close()
-        await storage.close()
-        await redis.aclose()
-        await async_engine.dispose()
+        await shutdown_container(container=container)
         logger.info("Application shutdown completed")

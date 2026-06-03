@@ -4,6 +4,8 @@ from aiogram import Bot, Dispatcher
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.infrastructure.payments.container import PaymentContainer
+
 
 @dataclass(slots=True)
 class Container:
@@ -11,6 +13,7 @@ class Container:
     dp: Dispatcher
     redis: Redis
     session_factory: async_sessionmaker[AsyncSession]
+    payments: PaymentContainer | None = None
 
     async def shutdown(self) -> None:
         await self.redis.aclose()
