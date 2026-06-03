@@ -19,5 +19,6 @@ async def pushed_start(msg: Message, services: ServiceContainer):
     user = await user_service.add_new_user(
         user_id=telegram_user.id, username=telegram_user.username
     )
-    print(user)
+    member = await services.bot.get_user_in_chat(chat_id=-1003731639160, user_id=user.user_id)
+    logger.info(f"User {user.user_id} is in chat: {member}")
     await msg.answer("Hello, world!")

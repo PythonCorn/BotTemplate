@@ -6,6 +6,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.utils.i18n import I18n
 from redis.asyncio import Redis
 
+from app.bot.core.chat_service import ChatService
 from app.bot.middlewares.language_middleware import LanguageMiddleware
 from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.core.config import settings
@@ -54,15 +55,23 @@ def _setup_i18n(dispatcher: Dispatcher):
 
 
 def _setup_service_middleware(
-    dispatcher: Dispatcher, redis: Redis, payment_container: PaymentContainer
+    dispatcher: Dispatcher,
+    redis: Redis,
+    payment_container: PaymentContainer,
+    chat_service: ChatService,
 ):
     dispatcher.update.middleware(
         ServiceMiddleware(
             async_session_factory=async_session_factory,
             redis=RedisCache(redis=redis),
             payment_container=payment_container,
+            chat_service=chat_service,
         )
     )
+
+
+def _create_chat_service(bot: Bot) -> ChatService:
+    return ChatService(bot=bot)
 
 
 def setup_bot_routers(routers: list[Router], dispatcher: Dispatcher):
@@ -76,7 +85,13 @@ def create_container(routers: list[Router]) -> Container:
     bot = _create_bot()
     dp = _create_dispatcher(redis=redis)
 
-    _setup_service_middleware(dispatcher=dp, redis=redis, payment_container=payment_container)
+    _setup_service_middleware(
+        dispatcher=dp,
+        redis=redis,
+        payment_container=payment_container,
+        chat_service=_create_chat_service(bot=bot),
+    )
+
     _setup_i18n(dp)
 
     setup_bot_routers(routers=routers, dispatcher=dp)
