@@ -9,8 +9,9 @@ from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from app.bot.core.setup_bot_routers import setup_bot_routers
+from app.bot.handlers import start_handler
 from app.bot.middlewares.redis_middleware import RedisMiddleware
-from app.bot.middlewares.unit_of_work_middleware import UnitOfWorkMiddleware
+from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.core.app_state import AppState
 from app.core.config import settings
 from app.core.container import Container
@@ -38,10 +39,10 @@ async def lifespan(app: FastAPI):
     bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=storage)
 
-    dp.update.middleware(UnitOfWorkMiddleware(async_session_factory=async_session_factory))
     dp.update.middleware(RedisMiddleware(redis=redis_cache))
+    dp.update.middleware(ServiceMiddleware(async_session_factory=async_session_factory))
 
-    setup_bot_routers(dispatcher=dp)
+    setup_bot_routers(start_handler.router, dispatcher=dp)
 
     public_url = settings.PUBLIC_URL or await get_ngrok_public_url()
 

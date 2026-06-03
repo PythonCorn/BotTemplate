@@ -1,5 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.database.models import User
+from app.database.repositories.user_repo import UserRepo
+
 
 class UnitOfWork:
     def __init__(self, async_session_factory: async_sessionmaker[AsyncSession]):
@@ -19,6 +22,9 @@ class UnitOfWork:
     async def __aenter__(self) -> "UnitOfWork":
         self.session = self.async_session_factory()
         # Repositories are injected here
+        if self.session is None:
+            raise RuntimeError("Session is not initialized")
+        self.users = UserRepo(self.session, User)
 
         return self
 

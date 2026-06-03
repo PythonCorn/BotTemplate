@@ -16,6 +16,8 @@ COMPOSE := docker compose
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
+ALEMBIC=$(COMPOSE_DEV) exec app alembic -c alembic.ini
+
 # =========================
 # Help
 # =========================
@@ -132,15 +134,18 @@ pre-commit:
 
 .PHONY: migrate
 migrate:
-	alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 .PHONY: revision
 revision:
-	alembic revision --autogenerate -m "$(m)"
+	$(ALEMBIC) revision --autogenerate -m "$(m)"
 
 .PHONY: downgrade
 downgrade:
-	alembic downgrade -1
+	$(ALEMBIC) downgrade -1
+
+docker-clean:
+	docker system prune -af
 
 # =========================
 # Docker dev
@@ -152,7 +157,8 @@ dev-up:
 
 .PHONY: dev-down
 dev-down:
-	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV) down --remove-orphans
+	docker image prune -f
 
 .PHONY: dev-build
 dev-build:
