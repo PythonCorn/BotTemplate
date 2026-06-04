@@ -5,9 +5,10 @@ from fastapi import APIRouter, Request, Response
 
 from app.core.app_state import AppState, get_app_state
 from app.core.config import settings
-from app.infrastructure.payments.base import PaymentPayload
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.payments.base import PaymentProvider, PaymentProviderName
 from app.infrastructure.payments.container import PaymentContainer
-from app.infrastructure.payments.cryptobot_provider import CryptobotProvider
+from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
@@ -35,12 +36,47 @@ async def webhook_bot(request: Request):
     return {"ok": True}
 
 
-@router.post("/payment/cryptobot")
-async def get_webhook_cryptobot(request: Request):
+@router.post("/payment/{provider_name}")
+async def payment_webhook(provider_name: PaymentProviderName, request: Request):
     state: AppState = get_app_state(request)
-    payment_container: PaymentContainer | None = state.container.payments
-    if payment_container is not None and isinstance(payment_container.cryptobot, CryptobotProvider):
-        cryptobot: CryptobotProvider = payment_container.cryptobot
-        payment_payload: PaymentPayload | None = await cryptobot.check_invoice(request)
-        logger.info(f"Payment payload: {payment_payload}")
-    return {"status": "ok"}
+
+    payments: PaymentContainer | None = state.container.payments
+    if payments is None:
+        return {"status": "payments_disabled"}
+
+    provider: PaymentProvider | None = payments.get(provider_name)
+    if provider is None:
+        return {"status": "unknown_provider"}
+
+    payment_payload = await provider.check_invoice(request)
+    if payment_payload is None:
+        return {"status": "ignored"}
+
+    async with UnitOfWork(
+        async_session_factory=state.container.session_factory,
+    ) as uow:
+        service = PaymentService(uow)
+        result = await service.paid(payment_payload.invoice_id)
+
+        if result.success and result.user is not None and result.payment is not None:
+            await uow.commit()
+
+            logger.info(
+                "Payment processed: payment_id=%d, user_id=%d, amount=%s",
+                result.payment.id,
+                result.user.user_id,
+                result.payment.amount,
+            )
+
+            return {"status": "ok"}
+
+        logger.warning(
+            "Payment was not processed: payment_id=%d, reason=%s",
+            payment_payload.invoice_id,
+            result.reason,
+        )
+
+    return {
+        "status": "ignored",
+        "reason": result.reason,
+    }

@@ -7,7 +7,11 @@ class UserService(BaseService):
         user = await self.uow.users.get_by_user_id(user_id)
         if user is None:
             user = await self.uow.users.add(User(user_id=user_id, username=username))
+        await self.uow.commit()
         return user
 
     async def get_user_language(self, user_id: int) -> str:
         return await self.uow.users.get_user_language(user_id)
+
+    async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
+        return await self.uow.users.get_by_user_id(telegram_id)
