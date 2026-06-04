@@ -1,11 +1,8 @@
 from app.database.models import User
-from app.database.unit_of_work import UnitOfWork
+from app.services.base import BaseService
 
 
-class UserService:
-    def __init__(self, uow: UnitOfWork):
-        self.uow = uow
-
+class UserService(BaseService):
     async def add_new_user(self, user_id: int, username: str | None = None) -> User:
         user = await self.uow.users.get_by_user_id(user_id)
         if user is None:

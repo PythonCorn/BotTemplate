@@ -1,16 +1,16 @@
 from aiogram.utils.i18n import gettext as _
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from app.bot.windows.base import BaseWindow, WindowMessage
 
 
-class ExampleWindow:
-    @staticmethod
-    def start(username: str | None = None) -> dict:
-        keyboard = InlineKeyboardBuilder()
+class ExampleWindow(BaseWindow):
+    def start(self, username: str | None = None) -> WindowMessage:
+        keyboard = self.get_empty_keyboard()
         keyboard.button(
-            text=_("Example button"),
-            callback_data="example_callback",
+            text=_("Пополнить счет"),
+            callback_data="payment",
         )
-        return {
-            "caption": _("Example message {username}").format(username=username),
-            "reply_markup": keyboard.adjust(1).as_markup(),
-        }
+        return WindowMessage(
+            caption=_("Example message {username}").format(username=username),
+            reply_markup=keyboard.adjust(1).as_markup(),
+        )

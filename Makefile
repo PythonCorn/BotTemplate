@@ -158,7 +158,7 @@ docker-clean:
 
 .PHONY: dev-up
 dev-up:
-	$(COMPOSE_DEV) up -d
+	$(COMPOSE_DEV) up -d --build
 
 .PHONY: dev-down
 dev-down:

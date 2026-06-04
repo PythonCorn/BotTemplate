@@ -1,12 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
 
-from aiogram import Router
 from fastapi import FastAPI
 
 from app.bot.core.shutdown import shutdown_container
 from app.bot.core.webhook import setup_telegram_webhook
-from app.bot.handlers import start_handler
 from app.core.app_state import AppState
 from app.core.bootstrap import create_container
 from app.core.container import Container
@@ -14,15 +12,11 @@ from app.core.container import Container
 logger = logging.getLogger(__name__)
 
 
-# Include your bot routes here
-BOT_ROUTERS: list[Router] = [start_handler.router]
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup started")
 
-    container: Container = create_container(BOT_ROUTERS)
+    container: Container = create_container()
 
     app.state.app_state = AppState(container=container)
 

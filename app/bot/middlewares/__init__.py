@@ -1,0 +1,1 @@
+from app.bot.middlewares.setup_service_middleware import setup_service_middleware

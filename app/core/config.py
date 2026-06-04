@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     PUBLIC_URL: str | None = None
 
     BOT_TOKEN: str = ""
-    TELEGRAM_WEBHOOK_PATH: str | None = None
+    TELEGRAM_WEBHOOK_PATH: str | None = "/webhook/bot"
     TELEGRAM_WEBHOOK_SECRET_TOKEN: str | None = None
     TELEGRAM_WEBHOOK_IP_ADDRESS: str | None = None
 
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     NGROK_AUTHTOKEN: str | None = None
 
+    PAYMENT_WEBHOOK_PATH: str | None = "/webhook/payment"
     CRYPTOBOT_TOKEN: str | None = None
 
     @property

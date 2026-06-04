@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass, fields
 
-from app.infrastructure.payments.base import PaymentProvider
+from app.infrastructure.payments.base import PaymentProvider, PaymentProviderName
 from app.infrastructure.payments.cryptobot_provider import CryptobotProvider
 
 
@@ -17,5 +17,12 @@ class PaymentContainer:
 
     async def close(self) -> None:
         for provider in self:
-            if provider is not None:
-                await provider.close()
+            await provider.close()
+
+    def get(self, name: PaymentProviderName) -> PaymentProvider:
+        provider: PaymentProvider | None = getattr(self, name.value, None)
+
+        if provider is None:
+            raise ValueError(f"Payment provider '{name}' not found")
+
+        return provider

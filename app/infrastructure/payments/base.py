@@ -13,26 +13,40 @@ class Invoice:
     asset: str | Any | None = None
 
 
+class PaymentProviderName(StrEnum):
+    cryptobot = "cryptobot"
+
+
+class PaymentStatus(StrEnum):
+    CREATED = "created"
+    PENDING = "pending"
+    PAID = "paid"
+    EXPIRED = "expired"
+    CANCELED = "canceled"
+    FAILED = "failed"
+
+
 @dataclass(slots=True)
 class PaymentPayload:
-    user_id: int
-    amount: float | int
+    invoice_id: int
 
     def to_json(self) -> str:
-        return json.dumps({"user_id": self.user_id, "amount": self.amount})
-
-
-class PaymentName(StrEnum):
-    cryptobot = "cryptobot"
+        return json.dumps({"invoice_id": self.invoice_id})
 
 
 class PaymentProvider(ABC):
     is_work: bool = True
-    name_provider: PaymentName
+    name_provider: PaymentProviderName
 
     @abstractmethod
-    async def create_invoice(self, user_id: int, amount: float | int, **kwargs) -> Invoice:
+    async def create_invoice(
+        self, invoice_id: int, user_id: int, amount: float | int, **kwargs
+    ) -> Invoice:
         raise NotImplementedError
+
+    @abstractmethod
+    async def check_invoice(self, *args, **kwargs):
+        """Method for checking the status of the invoice"""
 
     @abstractmethod
     async def close(self) -> None:

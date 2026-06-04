@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
+from typing import Any
 
 import aiofiles
 from aiogram.types import BufferedInputFile, MaybeInaccessibleMessage, Message
-from mypy.types import Any
 from redis.asyncio import Redis
 
 IMAGES_PATH = Path(__file__).parent.parent.parent / "static" / "images"

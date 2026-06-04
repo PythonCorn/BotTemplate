@@ -6,6 +6,7 @@ from app.bot.windows.container import WindowsContainer
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.cache.redis import RedisCache
 from app.infrastructure.payments.container import PaymentContainer
+from app.services.payment_service import PaymentService
 from app.services.user_service import UserService
 
 
@@ -28,6 +29,10 @@ class ServiceContainer:
     @cached_property
     def users(self) -> UserService:
         return UserService(self.uow)
+
+    @cached_property
+    def payment_service(self) -> PaymentService:
+        return PaymentService(self.uow)
 
     @property
     def payments(self) -> PaymentContainer:
