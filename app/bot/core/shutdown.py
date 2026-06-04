@@ -8,12 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 async def shutdown_container(container: Container) -> None:
-    await container.bot.delete_webhook()
+    await container.bot.delete_webhook(drop_pending_updates=False)
 
-    if container.bot.session is not None:
-        await container.bot.session.close()
+    if container.payments is not None:
+        await container.payments.close()
 
     await container.redis.aclose()
     await async_engine.dispose()
-    if container.payments is not None:
-        await container.payments.close()
+
+    if container.bot.session is not None:
+        await container.bot.session.close()
