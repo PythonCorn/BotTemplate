@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.database.models import Payment, User
+from app.database.models import Fingerprint, Payment, User
+from app.database.repositories.fingerprint import FingerprintRepository
 from app.database.repositories.payment_repo import PaymentRepository
 from app.database.repositories.user_repo import UserRepo
 
@@ -31,6 +32,7 @@ class UnitOfWork:
         # Repositories are injected here
         self.users = UserRepo(self.session, User)
         self.payments = PaymentRepository(self.session, Payment)
+        self.fingerprints = FingerprintRepository(self.session, Fingerprint)
 
         return self
 

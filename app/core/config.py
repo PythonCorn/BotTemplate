@@ -75,6 +75,8 @@ class Settings(BaseSettings):
 
     BACKUP_CHAT_ID: int | None = None
 
+    WEB_APP_PATH: str | None = "/api/webapp"
+
     @property
     def POSTGRES_URI(self):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

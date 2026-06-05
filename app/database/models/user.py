@@ -1,10 +1,14 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import NUMERIC, BigInteger, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import BaseModel
 from app.database.mixin import DateTimeAtMixin
+
+if TYPE_CHECKING:
+    from app.database.models.fingerprint import Fingerprint
 
 
 class User(BaseModel, DateTimeAtMixin):
@@ -37,6 +41,11 @@ class User(BaseModel, DateTimeAtMixin):
         default=Decimal("0.00"),
         nullable=False,
         server_default="0.00",
+    )
+
+    fingerprints: Mapped[list["Fingerprint"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self):

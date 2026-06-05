@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 from typing import TypeVar
 
@@ -7,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.base import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRepository[T: BaseModel]:
@@ -21,6 +24,7 @@ class BaseRepository[T: BaseModel]:
     async def add(self, instance: T) -> T:
         self.session.add(instance)
         await self.session.flush()
+        logger.info("Added to database %s ", instance)
         return instance
 
     async def get_by_id(self, model_id: int) -> T | None:

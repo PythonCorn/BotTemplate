@@ -17,3 +17,10 @@ services:
 
   redis:
     restart: always
+
+  nginx:
+    restart: always
+    ports:
+      - "80:80"
+      # позже добавишь:
+      # - "443:443"

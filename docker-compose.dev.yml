@@ -12,7 +12,7 @@ services:
       --reload-exclude "logs/*"
       --reload-exclude "data/*"
     ports:
-      - "8000:8000"
+      []
     volumes:
       - ./app:/app/app
       - ./alembic:/app/alembic
@@ -36,8 +36,12 @@ services:
     container_name: bot_template_ngrok
     env_file:
       - .env
-    command: http app:8000
+    command: http nginx:80
     ports:
       - "4040:4040"
     depends_on:
-      - app
+      - nginx
+
+  nginx:
+    ports:
+      - "8000:80"

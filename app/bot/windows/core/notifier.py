@@ -6,7 +6,9 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.utils.i18n import I18n
 
 from app.bot.windows.core import WindowMessage
+from app.bot.windows.fingerprint_window import FingerprintWindow
 from app.bot.windows.payment_window import PaymentWindows
+from app.services.fingerprint_match import FingerprintMatchResult
 
 logger = logging.getLogger(__name__)
 
@@ -129,4 +131,44 @@ class PaymentSuccessNotifier(Notifier):
         await self.notify(
             chat_id=user_id,
             window=window.payment_success(amount=amount, i18n=self.i18n, locale=locale),
+        )
+
+
+class NotifyScamUser(Notifier):
+    """
+    Handles the process of notifying relevant parties about scam activity.
+
+    This class inherits from the Notifier base class and provides functionality
+    to notify administrators when a user is flagged for scam activities. It
+    implements methods that leverage fingerprint matching results to identify
+    scams and then send notifications accordingly.
+
+    Attributes:
+        None
+    """
+
+    async def notify_admins(
+        self, chat_id: int, user_id: int, match_result: list[FingerprintMatchResult]
+    ) -> None:
+        """
+        Notifies administrators about the match results associated with a specific user.
+
+        This asynchronous method creates a fingerprint window and retrieves a list of scams
+        based on the provided user ID and fingerprint match results. It then sends a notification
+        to the specified chat.
+
+        Args:
+            chat_id (int): The ID of the chat where the notification should be sent.
+            user_id (int): The unique identifier of the user for whom fingerprint matching results
+                are being processed.
+            match_result (list[FingerprintMatchResult]): A list containing the results of the
+                fingerprint matching process.
+        """
+        window = FingerprintWindow()
+        await self.notify(
+            chat_id=chat_id,
+            window=window.get_scams(
+                user_id=user_id,
+                match_result=match_result,
+            ),
         )
