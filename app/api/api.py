@@ -122,8 +122,6 @@ async def post_fingerprint(
                 match_result=matches,
             )
 
-    logger.info("Fingerprint saved: %s", fp)
-
     return {
         "status": "ok",
         "fingerprint_hash": fingerprint_hash,
