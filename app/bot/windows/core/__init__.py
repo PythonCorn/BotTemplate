@@ -1,2 +1,5 @@
-from app.bot.windows.core.base import BaseWindow, WindowMessage
-from app.bot.windows.core.sender import Sender
+from app.bot.windows.core.base import WindowMessage
+
+__all__ = [
+    "WindowMessage",
+]

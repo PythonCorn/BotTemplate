@@ -1,8 +1,10 @@
 import logging
+from decimal import Decimal
 
 from aiogram.types import Update
 from fastapi import APIRouter, Request, Response
 
+from app.bot.windows.core.notifier import PaymentSuccessNotifier
 from app.core.app_state import AppState, get_app_state
 from app.core.config import settings
 from app.database.unit_of_work import UnitOfWork
@@ -60,12 +62,25 @@ async def payment_webhook(provider_name: PaymentProviderName, request: Request):
 
         if result.success and result.user is not None and result.payment is not None:
             await uow.commit()
-
+            notifier = PaymentSuccessNotifier(bot=state.container.bot, i18n=state.container.i18n)
+            if settings.ADMIN_CHAT_ID is not None:
+                await notifier.notify_admin(
+                    user_id=result.user.user_id,
+                    username=result.user.username or str(result.user.user_id),
+                    amount=result.payment.amount,
+                    provider=provider_name,
+                    admin_chat_id=settings.ADMIN_CHAT_ID,
+                )
+            await notifier.notify_user(
+                user_id=result.user.user_id,
+                amount=result.payment.amount,
+                locale=result.user.language,
+            )
             logger.info(
                 "Payment processed: payment_id=%d, user_id=%d, amount=%s",
                 result.payment.id,
                 result.user.user_id,
-                result.payment.amount,
+                result.payment.amount.quantize(Decimal("0.01")),
             )
 
             return {"status": "ok"}

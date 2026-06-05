@@ -36,7 +36,7 @@ def create_container() -> Container:
         chat_service=ChatService(bot=bot),
     )
 
-    setup_i18n(dp)  # Подключение Babel
+    i18n = setup_i18n(dp)  # Подключение Babel
 
     setup_handlers(dispatcher=dp)
 
@@ -46,4 +46,5 @@ def create_container() -> Container:
         redis=redis,
         session_factory=async_session_factory,
         payments=payment_container,
+        i18n=i18n,
     )
