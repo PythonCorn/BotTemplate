@@ -64,8 +64,9 @@ async def payment_webhook(provider_name: PaymentProviderName, request: Request):
 
             payment_windows = PaymentWindows(i18n=state.bot.i18n, locale=result.user.language)
 
-            await state.bot.send_message_to_chat(
+            await state.bot.edit_message_in_chat(
                 chat_id=result.user.user_id,
+                key="payment_window",
                 message=payment_windows.payment_success(amount=result.payment.amount),
             )  # Отправка сообщения пользователю после успешной оплаты.
 
@@ -85,10 +86,10 @@ async def payment_webhook(provider_name: PaymentProviderName, request: Request):
                     ),
                 )  # Отправка сообщения админам
 
-            await state.bot.delete_message_in_chat(
-                chat_id=result.user.user_id,
-                key="payment_window",
-            )  # Удаление сообщения в чате пользователя
+            # await state.bot.delete_message_in_chat(
+            #     chat_id=result.user.user_id,
+            #     key="payment_window",
+            # )  # Удаление сообщения в чате пользователя
             return {"status": "ok"}
 
         logger.warning(

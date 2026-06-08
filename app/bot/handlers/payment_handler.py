@@ -1,10 +1,11 @@
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from app.bot.core.base import TelegramBot
 from app.bot.core.sender import Sender
+from app.bot.middlewares.user_middleware import TelegramUser
 from app.bot.windows.core.container import WindowsContainer
 from app.bot.windows.payment_window import PaymentCallbackData, PaymentProvidersCallbackData
 from app.database.models import User
@@ -27,17 +28,24 @@ async def show_payments(_, windows: WindowsContainer, sender: Sender, bot: Teleg
 
 @router.callback_query(PaymentProvidersCallbackData.filter())
 async def get_payment_name(
-    _,
+    call: CallbackQuery,
     windows: WindowsContainer,
     sender: Sender,
     callback_data: PaymentProvidersCallbackData,
     state: FSMContext,
+    bot: TelegramBot,
 ):
     await state.clear()
     provider = callback_data.provider
     await state.update_data(provider=provider)
     await state.set_state(PaymentStatesGroup.amount)
     await sender.send(window=windows.payment.send_amount())
+    if isinstance(call.message, Message):
+        await bot.add_message_to_cache(
+            chat_id=call.from_user.id,
+            message_id=call.message.message_id,
+            key="payment_window",
+        )
 
 
 @router.message(PaymentStatesGroup.amount)
@@ -49,10 +57,10 @@ async def get_amount_message(
     bot: TelegramBot,
     sender: Sender,
     windows: WindowsContainer,
+    telegram_user: TelegramUser,
 ):
     data = await state.get_data()
     provider_name = data.get("provider")
-
     try:
         provider, provider_name = bot.get_payment_provider(provider_name)
         if msg.from_user is None:
@@ -71,13 +79,11 @@ async def get_amount_message(
             invoice_id=invoice_data.id,
             amount=float(msg.text),
         )
-        message_to_delete = await sender.send(window=windows.payment.create_invoice(invoice))
-        if isinstance(message_to_delete, Message):
-            await bot.add_message_to_delete(
-                chat_id=msg.from_user.id,
-                message_id=message_to_delete.message_id,
-                key="payment_window",
-            )
+        await bot.edit_message_in_chat(
+            chat_id=telegram_user.id,
+            key="payment_window",
+            message=windows.payment.create_invoice(invoice),
+        )
         await state.clear()
     except ValueError:
         await sender.send(window=windows.payment.invalid_operation())

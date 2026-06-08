@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import NUMERIC, BigInteger, String
+from sqlalchemy import NUMERIC, BigInteger, Boolean, String, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import BaseModel
@@ -42,6 +42,9 @@ class User(BaseModel, DateTimeAtMixin):
         nullable=False,
         server_default="0.00",
     )
+    is_check_fingerprint: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=false()
+    )
 
     fingerprints: Mapped[list["Fingerprint"]] = relationship(
         back_populates="user",
@@ -55,6 +58,7 @@ class User(BaseModel, DateTimeAtMixin):
             f"username={self.username}, "
             f"language={self.language}, "
             f"balance={self.balance}, "
+            f"is_check_fingerprint={self.is_check_fingerprint}, "
             f"created_at={self.created_at}, "
             f"updated_at={self.updated_at}"
             f")"

@@ -8,13 +8,13 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import InputMediaPhoto
 from aiogram.utils.i18n import I18n
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot.core.file_formatting import FileFormatting
-from app.bot.core.setup_i18n import ConfigI18n, get_i18n
-from app.bot.middlewares.language_middleware import LanguageMiddleware
+from app.bot.middlewares.fingerprint_middleware import FingerprintMiddleware
 from app.bot.middlewares.sender_middleware import SenderMiddleware
 from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.bot.middlewares.session_factory_middleware import SessionFactoryMiddleware
@@ -46,30 +46,33 @@ class TelegramBot(Bot):
         ip_address: str | None = None,
         allowed_updates: list[str] | None = None,
         parse_mode: ParseMode = ParseMode.HTML,
-        config_i18n: ConfigI18n | None = None,
+        i18n: I18n | None = None,
         redis: RedisCache | None = None,
         webhook_path: str = "/webhook/bot",
+        fingerprint: bool = False,
     ):
         super().__init__(token=token, default=DefaultBotProperties(parse_mode=parse_mode))
 
+        self.base_url: str | None = None
         self._session_factory = session_factory
         self._redis = redis
         self._dispatcher = Dispatcher(storage=self._setup_redis())
-        self._i18n = get_i18n(config_i18n=config_i18n)
+        self._i18n = i18n
         self._webhook_path = webhook_path
         self._secret_token = secret_token
         self._ip_address = ip_address
         self._allowed_updates = allowed_updates
-        self.base_url: str | None = None
         self._payment_container: PaymentContainer | None = None
 
         # include middlewares
+
         self._setup_user_middleware()
+        self._setup_windows_middleware()
         self._setup_session_middleware(session_factory=session_factory)
         self._setup_sender_middleware()
-        if self._i18n is not None:
-            self._setup_i18n_middleware()
-        self._setup_windows_middleware()
+
+        if fingerprint:
+            self._setup_fingerprint_middleware()
 
     def include_middleware(
         self, middleware: BaseMiddleware, event: Literal["message", "callback_query"] | None = None
@@ -183,55 +186,57 @@ class TelegramBot(Bot):
         except Exception as e:
             logger.exception("Failed to send message: %s", e)
 
-    # async def send_message_to_chat(
-    #     self,
-    #     window: type[BaseWindow],
-    #     func: str,
-    #     *,
-    #     chat_id: int | None = None,
-    #     user_id: int | None = None,
-    #     locale: str | None = None,
-    #     **kwargs,
-    # ):
-    #     target_chat = chat_id or user_id
-    #     if target_chat is None:
-    #         raise ValueError("Either chat_id or user_id must be provided")
-    #
-    #     if locale is None and user_id is not None:
-    #         locale = await get_user_language(user_id, session_factory=self._session_factory)
-    #
-    #     if not isinstance(target_chat, int):
-    #         raise ValueError("Either user_id or chat_id must be provided")
-    #
-    #     w = window(i18n=self.i18n, locale=locale or "ru")
-    #     window_func = getattr(w, func, None)
-    #
-    #     if window_func is None or not callable(window_func):
-    #         raise AttributeError(f"Window method {func!r} is not found")
-    #
-    #     if user_id is not None:
-    #         kwargs = kwargs | {"user_id": user_id}
-    #
-    #     message = self._call_with_supported_kwargs(window_func, **kwargs)
-    #     try:
-    #         if isinstance(message, WindowMessage) and target_chat is not None:
-    #             if message.photo_filename is not None:
-    #                 formatter = FileFormatting(redis=self.redis)
-    #                 photo = await formatter.get_photo(message.photo_filename)
-    #                 await self.send_photo(
-    #                     chat_id=target_chat,
-    #                     photo=photo,
-    #                     caption=message.caption,
-    #                     reply_markup=message.reply_markup,
-    #                 )
-    #             else:
-    #                 await self.send_message(
-    #                     chat_id=target_chat, text=message.text, reply_markup=message.reply_markup
-    #                 )
-    #     except Exception as e:
-    #         logger.exception("Failed to send message: %s", e)
+    async def edit_message_in_chat(self, chat_id: int, key: str, message: WindowMessage):
+        message_id: Any = await self.cache.get(f"{key}:{chat_id}")
+        message_id = int(message_id)
+        if message_id is None:
+            await self.send_message_to_chat(chat_id, message)
+            await self.delete_message_in_chat(chat_id, key)
+            return None
+        try:
+            if message.photo_filename is not None:
+                return await self._edit_message_media(chat_id, message_id, message)
 
-    async def add_message_to_delete(
+            return await self._edit_message_caption(chat_id, message_id, message)
+        except Exception as e:
+            logger.exception("Failed to send message: %s", e)
+            try:
+                return await self._edit_message_text(chat_id, message_id, message)
+            except Exception as e:
+                logger.exception("Failed to send message: %s", e)
+
+    async def _edit_message_media(self, chat_id: int, message_id: int, message: WindowMessage):
+        formatter = FileFormatting(redis=self.redis)
+        photo = await formatter.get_photo(message.photo_filename)  # type: ignore
+        return await self.edit_message_media(
+            chat_id=chat_id,
+            message_id=message_id,
+            media=InputMediaPhoto(
+                media=photo,
+                caption=message.caption,
+            ),
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+    async def _edit_message_caption(self, chat_id: int, message_id: int, message: WindowMessage):
+        caption = message.caption if message.caption != "" else message.text
+        return await self.edit_message_caption(
+            chat_id=chat_id,
+            message_id=message_id,
+            caption=caption,
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+    async def _edit_message_text(self, chat_id: int, message_id: int, message: WindowMessage):
+        text = message.text if message.text != "" else message.caption
+        return await self.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+    async def add_message_to_cache(
         self, chat_id: int, message_id: int, key: str, ttl: int = 60 * 5
     ):
         await self.cache.set(f"{key}:{chat_id}", message_id, ttl=ttl)
@@ -243,6 +248,7 @@ class TelegramBot(Bot):
             try:
                 await self.delete_message(chat_id=chat_id, message_id=int(message_id))
                 logger.info("Message %d deleted from chat %d", int(message_id), chat_id)
+                await self.cache.delete(f"{key}:{chat_id}")
             except TelegramBadRequest:
                 logger.exception(
                     "Can't delete message in chat %d, message_id %d", chat_id, message_id
@@ -336,11 +342,12 @@ class TelegramBot(Bot):
     def _setup_session_middleware(self, session_factory: async_sessionmaker[AsyncSession]):
         self.include_middleware(SessionFactoryMiddleware(session_factory=session_factory))
 
-    def _setup_i18n_middleware(self):
+    def _setup_windows_middleware(self):
         if self._i18n is None:
             raise RuntimeError("I18n is not initialized")
-        self.dispatcher.update.middleware(LanguageMiddleware(i18n=self.i18n))
-        logger.info("I18n middleware is initialized")
+        self.include_middleware(
+            WindowsMiddleware(windows_container=WindowsContainer(i18n=self.i18n))
+        )
 
-    def _setup_windows_middleware(self):
-        self.include_middleware(WindowsMiddleware(windows_container=WindowsContainer()))
+    def _setup_fingerprint_middleware(self):
+        self.include_middleware(middleware=FingerprintMiddleware())

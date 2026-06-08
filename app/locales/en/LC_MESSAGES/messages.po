@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-07 13:11+0000\n"
+"POT-Creation-Date: 2026-06-08 11:09+0000\n"
 "PO-Revision-Date: 2026-06-03 09:22+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -18,70 +18,94 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app/bot/windows/example.py:13
+#: app/bot/windows/exception_windows.py:8
+msgid "Произошла непредвиденная ошибка!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:49
+msgid "Платежные провайдеры пока не подключены!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:51
+msgid "Выберите платежную систему:"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:72
+msgid "Это предупреждение!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:89
+#, python-brace-format
+msgid "Отправьте сумму для пополнения в {asset}"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:112
+#, python-brace-format
+msgid "Оплатить {amount} {asset}"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:117
+msgid "Отмена"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:119
+msgid "Оплатите сумму по кнопке ниже!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:135
+msgid "Вы ввели неверное значение. Попробуйте еще раз!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:155
+msgid "В меню"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:160
+#, python-brace-format
+msgid "Ваш баланс успешно пополнен на сумму: {amount} {asset}"
+msgstr ""
+
+#: app/bot/windows/start_windows.py:13
 msgid "Пополнить счет"
-msgstr ""
+msgstr "Update Balance"
 
-#: app/bot/windows/example.py:17
+#: app/bot/windows/start_windows.py:17
 msgid "WebApp"
-msgstr ""
+msgstr "WebApp"
 
-#: app/bot/windows/example.py:21
+#: app/bot/windows/start_windows.py:21
 msgid "Проверка работы i18n"
+msgstr "Check i18n"
+
+#: app/bot/windows/start_windows.py:25
+#, python-brace-format
+msgid "Какой-то текст {username}"
 msgstr ""
 
-#: app/bot/windows/example.py:25
-msgid "Какой-то текст"
-msgstr ""
-
-#: app/bot/windows/example.py:29
+#: app/bot/windows/start_windows.py:29
 #, python-brace-format
 msgid "Example message {username}"
 msgstr ""
 
-#: app/bot/windows/payment_window.py:82
-msgid "Выберите платежную систему:"
-msgstr ""
+#~ msgid "Какой-то текст"
+#~ msgstr ""
 
-#: app/bot/windows/payment_window.py:97
-msgid "Это предупреждение!"
-msgstr ""
+#~ msgid "Отправьте сумму для пополнения в USD"
+#~ msgstr ""
 
-#: app/bot/windows/payment_window.py:114
-msgid "Отправьте сумму для пополнения в USD"
-msgstr ""
+#~ msgid "Оплатить {amount} USD"
+#~ msgstr ""
 
-#: app/bot/windows/payment_window.py:135
-#, python-brace-format
-msgid "Оплатить {amount} USD"
-msgstr ""
+#~ msgid "Ваш баланс успешно пополнен на сумму: {amount} USD"
+#~ msgstr ""
 
-#: app/bot/windows/payment_window.py:137
-msgid "Отмена"
-msgstr ""
-
-#: app/bot/windows/payment_window.py:139
-msgid "Оплатите сумму по кнопке ниже!"
-msgstr ""
-
-#: app/bot/windows/payment_window.py:155
-msgid "Вы ввели неверное значение. Попробуйте еще раз!"
-msgstr ""
-
-#: app/bot/windows/payment_window.py:175
-#, python-brace-format
-msgid "Ваш баланс успешно пополнен на сумму: {amount} USD"
-msgstr ""
-
-#: app/bot/windows/payment_window.py:204
-#, python-brace-format
-msgid ""
-"Пополнение баланса!\n"
-"\n"
-"Пользователь: @{username}\n"
-"Telegram ID: {user_id}\n"
-"\n"
-"Сумма: {amount} USD\n"
-"Платежная система: {provider}\n"
-"\n"
-msgstr ""
+#~ msgid ""
+#~ "Пополнение баланса!\n"
+#~ "\n"
+#~ "Пользователь: @{username}\n"
+#~ "Telegram ID: {user_id}\n"
+#~ "\n"
+#~ "Сумма: {amount} USD\n"
+#~ "Платежная система: {provider}\n"
+#~ "\n"
+#~ msgstr ""

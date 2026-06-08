@@ -2,12 +2,11 @@ import asyncio
 import logging
 import signal
 
-from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram.utils.i18n import I18n
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.bot.core.setup_i18n import get_i18n
+from app.bot.core.base import TelegramBot
 from app.core.config import settings
 from app.core.logger import setup_logging
 from app.workers.backup_worker import backup_worker
@@ -17,9 +16,29 @@ setup_logging()
 
 logger = logging.getLogger(__name__)
 
-I18N = get_i18n()
+async_engine = create_async_engine(
+    url=settings.POSTGRES_URI,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=10,
+)
 
-BOT = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+async_session_factory = async_sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=async_engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+
+I18N = I18n(path="app/locales", default_locale="ru")
+
+BOT = TelegramBot(
+    token=settings.BOT_TOKEN,
+    session_factory=async_session_factory,
+    i18n=I18N,
+)
 
 
 async def main():

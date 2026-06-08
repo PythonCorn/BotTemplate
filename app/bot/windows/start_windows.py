@@ -6,7 +6,7 @@ from app.bot.windows.payment_window import PaymentCallbackData
 from app.core.config import settings
 
 
-class ExampleWindow(BaseWindow):
+class StartWindows(BaseWindow):
     def start(self, username: str | None = None) -> WindowMessage:
         keyboard = self.get_empty_keyboard()
         keyboard.button(

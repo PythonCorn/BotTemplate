@@ -3,11 +3,10 @@ from aiogram.utils.i18n import I18n
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.windows.core.window_message import WindowMessage
-from app.database.cruds.get_user_language import get_user_language
 
 
 class BaseWindow:
-    def __init__(self, i18n: I18n | None = None, locale: str = "ru") -> None:
+    def __init__(self, i18n: I18n, locale: str = "ru") -> None:
         self.i18n = i18n
         self.locale = locale
 
@@ -27,14 +26,9 @@ class BaseWindow:
         )
 
     def _(self, text: str, **kwargs) -> str:
-        translated = text if self.i18n is None else self.i18n.gettext(text, locale=self.locale)
+        translated = self.i18n.gettext(text, locale=self.locale)
 
         if kwargs:
             return translated.format(**kwargs)
 
         return translated
-
-    @classmethod
-    async def set_locale(cls, i18n: I18n, user_id: int, session_factory) -> "BaseWindow":
-        locale = await get_user_language(user_id, session_factory)
-        return cls(i18n=i18n, locale=locale)

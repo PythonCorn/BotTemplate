@@ -1,9 +1,9 @@
+from aiogram.utils.i18n import I18n
 from redis.asyncio import Redis
 from starlette.responses import FileResponse
 
 from app.api import api, health, webhook
 from app.bot.core.base import TelegramBot
-from app.bot.core.setup_i18n import ConfigI18n
 from app.bot.handlers import payment_handler, start_handler
 from app.core.base import BaseApp
 from app.core.config import settings
@@ -15,7 +15,7 @@ from app.infrastructure.payments.providers.cryptobot import CryptobotProvider
 from app.services.payment_service import PaymentService
 from app.services.user_service import UserService
 
-config_i18n = ConfigI18n()
+i18n = I18n(path="app/locales", default_locale="ru")
 
 
 redis = RedisCache(
@@ -29,10 +29,11 @@ redis = RedisCache(
 
 bot = TelegramBot(
     token=settings.BOT_TOKEN,
-    config_i18n=config_i18n,
+    i18n=i18n,
     redis=redis,
     secret_token=settings.TELEGRAM_WEBHOOK_SECRET_TOKEN,
     session_factory=async_session_factory,
+    fingerprint=True,
 )
 
 payment_container = PaymentContainer(cryptobot=CryptobotProvider(token=settings.CRYPTOBOT_TOKEN))

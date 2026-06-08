@@ -1,10 +1,9 @@
 from decimal import Decimal
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.utils.i18n import gettext as _
 
 from app.bot.windows.core.base_window import BaseWindow
-from app.bot.windows.core.keyboards import back_button
+from app.bot.windows.core.keyboards import StartCallbackData, back_button
 from app.bot.windows.core.window_message import WindowMessage
 from app.infrastructure.payments.providers.core.container import PaymentContainer
 from app.infrastructure.payments.providers.core.enums import PaymentAsset, PaymentProviderName
@@ -46,9 +45,9 @@ class PaymentWindows(BaseWindow):
     def start(self, payment_container: PaymentContainer | None = None) -> WindowMessage:
         keyboard = self.get_empty_keyboard()
         if payment_container is None:
-            caption = _("Платежные провайдеры пока не подключены!")
+            caption = self._("Платежные провайдеры пока не подключены!")
         else:
-            caption = _("Выберите платежную систему:")
+            caption = self._("Выберите платежную систему:")
             for provider in payment_container:
                 keyboard.button(
                     text=provider.name_provider.value,
@@ -69,7 +68,7 @@ class PaymentWindows(BaseWindow):
         Returns:
             WindowMessage: A localized warning message instance.
         """
-        return self.message(text=_("Это предупреждение!"))
+        return self.message(text=self._("Это предупреждение!"))
 
     def send_amount(self) -> WindowMessage:
         """
@@ -86,7 +85,7 @@ class PaymentWindows(BaseWindow):
         keyboard = self.get_empty_keyboard()
         back_button(keyboard, callback_data=PaymentCallbackData())
         return self.message(
-            caption=_("Отправьте сумму для пополнения в {asset}").format(
+            caption=self._("Отправьте сумму для пополнения в {asset}").format(
                 asset=PaymentAsset.USD.value
             ),
             reply_markup=keyboard.adjust(1).as_markup(),
@@ -109,14 +108,14 @@ class PaymentWindows(BaseWindow):
         """
         keyboard = self.get_empty_keyboard()
         keyboard.button(
-            text=_("Оплатить {amount} {asset}").format(
+            text=self._("Оплатить {amount} {asset}").format(
                 amount=invoice.amount, asset=PaymentAsset.USD.value
             ),
             url=invoice.pay_url,
         )
-        back_button(keyboard, text=_("Отмена"), callback_data="start")
+        back_button(keyboard, text=self._("Отмена"), callback_data="start")
         return self.message(
-            caption=_("Оплатите сумму по кнопке ниже!"),
+            caption=self._("Оплатите сумму по кнопке ниже!"),
             reply_markup=keyboard.adjust(1).as_markup(),
             photo_filename="example.png",
         )
@@ -132,7 +131,7 @@ class PaymentWindows(BaseWindow):
         keyboard = self.get_empty_keyboard()
         back_button(keyboard, callback_data="start")
         return self.message(
-            caption=_("Вы ввели неверное значение. Попробуйте еще раз!"),
+            caption=self._("Вы ввели неверное значение. Попробуйте еще раз!"),
             reply_markup=keyboard.adjust(1).as_markup(),
             photo_filename="example.png",
         )
@@ -150,12 +149,18 @@ class PaymentWindows(BaseWindow):
         Returns:
             WindowMessage: A message object containing the localized confirmation text.
         """
+        keyboard = self.get_empty_keyboard()
+        keyboard.button(
+            text=self._("В меню"),  # noqa: RUF001
+            callback_data=StartCallbackData(),
+        )
         return self.message(
             text=self._(
                 "Ваш баланс успешно пополнен на сумму: {amount} {asset}",
                 amount=amount.quantize(Decimal("0.01")),
                 asset=PaymentAsset.USD.value,
-            )
+            ),
+            reply_markup=keyboard.adjust(1).as_markup(),
         )
 
     def payment_success_admin(

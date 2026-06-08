@@ -1,9 +1,26 @@
+from aiogram.types import WebAppInfo
+
 from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.window_message import WindowMessage
+from app.core.config import settings
 from app.services.fingerprint_match import FingerprintMatchResult
 
 
 class FingerprintWindow(BaseWindow):
+    def fingerprint_message(self, public_url: str | None) -> WindowMessage:
+        keyboard = self.get_empty_keyboard()
+        keyboard.button(
+            text=self._("Условия"),
+            web_app=WebAppInfo(url=f"{public_url}{settings.WEB_APP_PATH}"),
+        )
+        return self.message(
+            caption=self._(
+                "Для пользования ботом вам необходимо принять условия. Для этого нажмите на кнопку ниже!"
+            ),
+            reply_markup=keyboard.adjust(1).as_markup(),
+            photo_filename="example.png",
+        )
+
     def get_scams(self, user_id: int, match_result: list[FingerprintMatchResult]) -> WindowMessage:
         """
         Identifies and reports potential scam activities based on fingerprint match results.
@@ -23,7 +40,7 @@ class FingerprintWindow(BaseWindow):
         """
         users = "\n".join(
             [
-                f"• user_id: <code>{match.user_id}</code> — score: <b>{match.score}</b>"
+                f"• user_id: <code>{match.user_id}</code> — score: <b>{match.score} %</b>"
                 for match in match_result
             ]
         )

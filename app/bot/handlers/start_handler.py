@@ -24,5 +24,5 @@ class PaymentStatesGroup(StatesGroup):
 async def check(
     _, windows: WindowsContainer, sender: Sender, users: UserService, telegram_user: TelegramUser
 ):
-    await users.add_new_user(user_id=telegram_user.id, username=telegram_user.username)
-    await sender.send(windows.example.start())
+    user = await users.add_new_user(user_id=telegram_user.id, username=telegram_user.username)
+    await sender.send(windows.start.start(username=user.username))

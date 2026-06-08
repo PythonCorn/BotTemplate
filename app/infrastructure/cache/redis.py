@@ -40,6 +40,9 @@ class RedisCache:
             return value.decode("utf-8")
         return value
 
+    async def delete(self, name: str):
+        await self.redis.delete(name)
+
     @staticmethod
     def _reformat_value_to_pydantic(
         value: bytes | str, response_model: type[T] | list[type[T]]
