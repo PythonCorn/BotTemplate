@@ -30,7 +30,7 @@ class RedisCache:
 
     async def get(
         self, name: str, response_model: type[T] | list[type[T]] | None = None
-    ) -> Any | list[T] | T | None:
+    ) -> Any | list[T] | T | str | None:
         value = await self.redis.get(name)
         if value is None:
             return None

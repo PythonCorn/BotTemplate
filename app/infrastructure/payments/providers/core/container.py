@@ -7,3 +7,5 @@ from app.infrastructure.payments.providers.cryptobot import CryptobotProvider
 @dataclass(slots=True)
 class PaymentContainer(BaseContainer):
     cryptobot: CryptobotProvider
+
+    notify_admins: bool = True

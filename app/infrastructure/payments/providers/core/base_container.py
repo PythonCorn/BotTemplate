@@ -17,8 +17,12 @@ class BaseContainer:
         """
         for field in fields(self):
             provider = getattr(self, field.name)
-            if provider is not None:
+            if isinstance(provider, PaymentProvider) and provider is not None:
                 yield provider
+
+    def __len__(self):
+        items = [item for item in self if item is not None]
+        return len(items)
 
     async def close(self) -> None:
         """

@@ -19,7 +19,9 @@ class PaymentPaidResult:
 
 
 class PaymentService(BaseService):
-    async def create_payment(self, user_id: int, amount: str, provider: PaymentProviderName | str):
+    async def create_payment(
+        self, user_id: int, amount: str, provider_name: PaymentProviderName | str
+    ):
         try:
             decimal_amount = Decimal(amount).quantize(Decimal("0.01"))
         except InvalidOperation as err:
@@ -27,11 +29,12 @@ class PaymentService(BaseService):
 
         payment: Payment = await self.uow.payments.add_new_payment(
             user_id=user_id,
-            provider=provider,
+            provider_name=provider_name,
             amount=decimal_amount,
         )
         logger.info(f"Payment created: {payment}")
         await self.uow.flush()
+        await self.uow.commit()
         return payment
 
     async def paid(self, payment_id: int) -> PaymentPaidResult:

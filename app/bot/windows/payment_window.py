@@ -1,14 +1,13 @@
 from decimal import Decimal
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
 from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.keyboards import back_button
 from app.bot.windows.core.window_message import WindowMessage
 from app.infrastructure.payments.providers.core.container import PaymentContainer
-from app.infrastructure.payments.providers.core.enums import PaymentProviderName
+from app.infrastructure.payments.providers.core.enums import PaymentAsset, PaymentProviderName
 from app.infrastructure.payments.providers.core.models import Invoice
 
 
@@ -44,17 +43,19 @@ class PaymentWindows(BaseWindow):
         None
     """
 
-    def start(self, payment_container: PaymentContainer) -> WindowMessage:
+    def start(self, payment_container: PaymentContainer | None = None) -> WindowMessage:
         keyboard = self.get_empty_keyboard()
-        for provider in payment_container:
-            keyboard.button(
-                text=provider.name_provider.value,
-                callback_data=PaymentProvidersCallbackData(provider=provider.name_provider),
-            )
+        if payment_container is None:
+            caption = _("Платежные провайдеры пока не подключены!")
+        else:
+            caption = _("Выберите платежную систему:")
+            for provider in payment_container:
+                keyboard.button(
+                    text=provider.name_provider.value,
+                    callback_data=PaymentProvidersCallbackData(provider=provider.name_provider),
+                )
         back_button(keyboard)
-        return self.message(
-            caption=_("Выберите платежную систему:"), reply_markup=keyboard.adjust(1).as_markup()
-        )
+        return self.message(caption=caption, reply_markup=keyboard.adjust(1).as_markup())
 
     def attention(self) -> WindowMessage:
         """
@@ -85,7 +86,9 @@ class PaymentWindows(BaseWindow):
         keyboard = self.get_empty_keyboard()
         back_button(keyboard, callback_data=PaymentCallbackData())
         return self.message(
-            caption=_("Отправьте сумму для пополнения в USD"),
+            caption=_("Отправьте сумму для пополнения в {asset}").format(
+                asset=PaymentAsset.USD.value
+            ),
             reply_markup=keyboard.adjust(1).as_markup(),
         )
 
@@ -106,7 +109,10 @@ class PaymentWindows(BaseWindow):
         """
         keyboard = self.get_empty_keyboard()
         keyboard.button(
-            text=_("Оплатить {amount} USD").format(amount=invoice.amount), url=invoice.pay_url
+            text=_("Оплатить {amount} {asset}").format(
+                amount=invoice.amount, asset=PaymentAsset.USD.value
+            ),
+            url=invoice.pay_url,
         )
         back_button(keyboard, text=_("Отмена"), callback_data="start")
         return self.message(
@@ -146,18 +152,18 @@ class PaymentWindows(BaseWindow):
         """
         return self.message(
             text=self._(
-                "Ваш баланс успешно пополнен на сумму: {amount} USD",
+                "Ваш баланс успешно пополнен на сумму: {amount} {asset}",
                 amount=amount.quantize(Decimal("0.01")),
+                asset=PaymentAsset.USD.value,
             )
         )
 
     def payment_success_admin(
         self,
-        username: str,
+        username: str | None,
         user_id: int,
         amount: Decimal,
-        provider: str,
-        i18n: I18n,
+        provider: str | PaymentProviderName,
     ) -> WindowMessage:
         """
         Generates an admin notification message for a successful payment, including
@@ -175,15 +181,14 @@ class PaymentWindows(BaseWindow):
             using the provided locale.
         """
         return self.message(
-            text=i18n.gettext(
+            text=(
                 "Пополнение баланса!\n\n"
                 "Пользователь: @{username}\n"
                 "Telegram ID: {user_id}\n\n"
                 "Сумма: {amount} USD\n"
-                "Платежная система: {provider}\n\n",
-                locale="ru",
+                "Платежная система: {provider}\n\n"
             ).format(
-                username=username,
+                username=username if username else str(user_id),
                 user_id=user_id,
                 amount=amount.quantize(Decimal("0.01")),
                 provider=provider,

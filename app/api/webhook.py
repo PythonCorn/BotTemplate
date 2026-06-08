@@ -62,13 +62,33 @@ async def payment_webhook(provider_name: PaymentProviderName, request: Request):
         if result.success and result.user is not None and result.payment is not None:
             await uow.commit()
 
-            await state.bot.send_message_to_chat(
-                PaymentWindows,
-                "payment_success",
-                user_id=result.user.user_id,
-                amount=result.payment.amount,
-            )
+            payment_windows = PaymentWindows(i18n=state.bot.i18n, locale=result.user.language)
 
+            await state.bot.send_message_to_chat(
+                chat_id=result.user.user_id,
+                message=payment_windows.payment_success(amount=result.payment.amount),
+            )  # Отправка сообщения пользователю после успешной оплаты.
+
+            if (
+                state.bot.payment_container is not None
+                and state.bot.payment_container.notify_admins
+            ):
+                if settings.ADMIN_CHAT_ID is None:
+                    raise ValueError("ADMIN_CHAT_ID is not set")
+                await state.bot.send_message_to_chat(
+                    chat_id=settings.ADMIN_CHAT_ID,
+                    message=payment_windows.payment_success_admin(
+                        amount=result.payment.amount,
+                        user_id=result.user.user_id,
+                        username=result.user.username,
+                        provider=PaymentProviderName(result.payment.provider),
+                    ),
+                )  # Отправка сообщения админам
+
+            await state.bot.delete_message_in_chat(
+                chat_id=result.user.user_id,
+                key="payment_window",
+            )  # Удаление сообщения в чате пользователя
             return {"status": "ok"}
 
         logger.warning(

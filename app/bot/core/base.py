@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Literal
+from inspect import signature
+from typing import Any, Literal
 
 from aiogram import BaseMiddleware, Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatMemberStatus, ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.utils.i18n import I18n
 from redis.asyncio import Redis
@@ -18,12 +20,17 @@ from app.bot.middlewares.service_middleware import ServiceMiddleware
 from app.bot.middlewares.session_factory_middleware import SessionFactoryMiddleware
 from app.bot.middlewares.user_middleware import UserMiddleware
 from app.bot.middlewares.windows_middleware import WindowsMiddleware
-from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.container import WindowsContainer
 from app.bot.windows.core.window_message import WindowMessage
-from app.database.cruds.get_user_language import get_user_language
 from app.infrastructure.cache.redis import RedisCache
+from app.infrastructure.payments.providers.core.base import PaymentProvider
 from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.infrastructure.payments.providers.core.enums import PaymentProviderName
+from app.infrastructure.payments.providers.core.exceptions import (
+    PaymentContainerIsNotSet,
+    PaymentProviderIsNotFound,
+    PaymentProviderNameIsEmpty,
+)
 from app.ngrok.get_ngrok_url import get_ngrok_public_url
 from app.services.base import BaseService
 
@@ -150,49 +157,130 @@ class TelegramBot(Bot):
         )
         return chat.invite_link
 
-    async def send_message_to_chat(
-        self,
-        window: type[BaseWindow],
-        func: str,
-        *,
-        chat_id: int | None = None,
-        user_id: int | None = None,
-        locale: str | None = None,
-        **kwargs,
-    ):
-        target_chat = chat_id or user_id
-        if target_chat is None:
-            raise ValueError("Either chat_id or user_id must be provided")
+    @staticmethod
+    def _call_with_supported_kwargs(func, **kwargs):
+        params = signature(func).parameters
+        filtered_kwargs = {key: value for key, value in kwargs.items() if key in params}
+        return func(**filtered_kwargs)
 
-        if locale is None and user_id is not None:
-            locale = await get_user_language(user_id, session_factory=self._session_factory)
+    async def send_message_to_chat(self, chat_id: int, message: WindowMessage):
 
-        if not isinstance(target_chat, int):
-            raise ValueError("Either user_id or chat_id must be provided")
-
-        w = window(i18n=self.i18n, locale=locale or "ru")
-        window_func = getattr(w, func, None)
-
-        if window_func is None or not callable(window_func):
-            raise AttributeError(f"Window method {func!r} is not found")
-        message = window_func(**kwargs)
+        if message.photo_filename is not None:
+            formatter = FileFormatting(redis=self.redis)
+            photo = await formatter.get_photo(message.photo_filename)
+            send = self.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=message.caption,
+                reply_markup=message.reply_markup,
+            )
+        else:
+            send = self.send_message(
+                chat_id=chat_id, text=message.text, reply_markup=message.reply_markup
+            )
         try:
-            if isinstance(message, WindowMessage) and target_chat is not None:
-                if message.photo_filename is not None:
-                    formatter = FileFormatting(redis=self.redis)
-                    photo = await formatter.get_photo(message.photo_filename)
-                    await self.send_photo(
-                        chat_id=target_chat,
-                        photo=photo,
-                        caption=message.caption,
-                        reply_markup=message.reply_markup,
-                    )
-                else:
-                    await self.send_message(
-                        chat_id=target_chat, text=message.text, reply_markup=message.reply_markup
-                    )
+            await send
         except Exception as e:
             logger.exception("Failed to send message: %s", e)
+
+    # async def send_message_to_chat(
+    #     self,
+    #     window: type[BaseWindow],
+    #     func: str,
+    #     *,
+    #     chat_id: int | None = None,
+    #     user_id: int | None = None,
+    #     locale: str | None = None,
+    #     **kwargs,
+    # ):
+    #     target_chat = chat_id or user_id
+    #     if target_chat is None:
+    #         raise ValueError("Either chat_id or user_id must be provided")
+    #
+    #     if locale is None and user_id is not None:
+    #         locale = await get_user_language(user_id, session_factory=self._session_factory)
+    #
+    #     if not isinstance(target_chat, int):
+    #         raise ValueError("Either user_id or chat_id must be provided")
+    #
+    #     w = window(i18n=self.i18n, locale=locale or "ru")
+    #     window_func = getattr(w, func, None)
+    #
+    #     if window_func is None or not callable(window_func):
+    #         raise AttributeError(f"Window method {func!r} is not found")
+    #
+    #     if user_id is not None:
+    #         kwargs = kwargs | {"user_id": user_id}
+    #
+    #     message = self._call_with_supported_kwargs(window_func, **kwargs)
+    #     try:
+    #         if isinstance(message, WindowMessage) and target_chat is not None:
+    #             if message.photo_filename is not None:
+    #                 formatter = FileFormatting(redis=self.redis)
+    #                 photo = await formatter.get_photo(message.photo_filename)
+    #                 await self.send_photo(
+    #                     chat_id=target_chat,
+    #                     photo=photo,
+    #                     caption=message.caption,
+    #                     reply_markup=message.reply_markup,
+    #                 )
+    #             else:
+    #                 await self.send_message(
+    #                     chat_id=target_chat, text=message.text, reply_markup=message.reply_markup
+    #                 )
+    #     except Exception as e:
+    #         logger.exception("Failed to send message: %s", e)
+
+    async def add_message_to_delete(
+        self, chat_id: int, message_id: int, key: str, ttl: int = 60 * 5
+    ):
+        await self.cache.set(f"{key}:{chat_id}", message_id, ttl=ttl)
+        logger.info("Message_id add to cache - %d", message_id)
+
+    async def delete_message_in_chat(self, chat_id: int, key: str):
+        message_id: Any = await self.cache.get(f"{key}:{chat_id}")
+        if message_id is not None and isinstance(message_id, str) and message_id.isdigit():
+            try:
+                await self.delete_message(chat_id=chat_id, message_id=int(message_id))
+                logger.info("Message %d deleted from chat %d", int(message_id), chat_id)
+            except TelegramBadRequest:
+                logger.exception(
+                    "Can't delete message in chat %d, message_id %d", chat_id, message_id
+                )
+
+    def get_payment_provider(
+        self, provider_name: str | PaymentProviderName | None
+    ) -> tuple[PaymentProvider, str | PaymentProviderName]:
+        """
+        Fetches and returns the payment provider by its name.
+
+        This method retrieves a payment provider from the designated payment container
+        using the specified provider name. If the provider name is not supplied, the
+        payment container is not set, or the provider cannot be found, corresponding
+        exceptions are raised.
+
+        Args:
+            provider_name: The name of the payment provider to be fetched. It can be
+                provided as a string, an instance of `PaymentProviderName`, or `None`.
+
+        Raises:
+            PaymentProviderNameIsEmpty: If the `provider_name` argument is `None`.
+            PaymentContainerIsNotSet: If the payment container is not set.
+            PaymentProviderIsNotFound: If no provider with the given name exists in the
+                payment container.
+
+        Returns:
+            PaymentProvider: The payment provider object matching the supplied name.
+        """
+        if provider_name is None:
+            raise PaymentProviderNameIsEmpty("Payment provider name is empty.")
+        container = self.payment_container
+        if container is None:
+            raise PaymentContainerIsNotSet("Payment container is not set.")
+        provider = container.get(provider_name)
+        if provider is None:
+            raise PaymentProviderIsNotFound("Provider %s is not found", provider_name)
+        return provider, provider_name
 
     def _setup_redis(self) -> RedisStorage | None:
         if self._redis is not None:
@@ -230,9 +318,7 @@ class TelegramBot(Bot):
         return self._webhook_path
 
     @property
-    def payment_container(self) -> PaymentContainer:
-        if self._payment_container is None:
-            raise RuntimeError("Payment container is not initialized")
+    def payment_container(self) -> PaymentContainer | None:
         return self._payment_container
 
     @payment_container.setter

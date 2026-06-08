@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 class PaymentRepository(BaseRepository[Payment]):
     async def add_new_payment(
-        self, user_id: int, provider: PaymentProviderName | str, amount: Decimal
+        self, user_id: int, provider_name: PaymentProviderName | str, amount: Decimal
     ) -> Payment:
-        model = Payment(user_id=user_id, provider=PaymentProviderName(provider), amount=amount)
+        model = Payment(user_id=user_id, provider=PaymentProviderName(provider_name), amount=amount)
         self.session.add(model)
         await self.session.flush()
         return model

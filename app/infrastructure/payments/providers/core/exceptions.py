@@ -12,3 +12,15 @@ class InvalidSignatureException(PaymentException):
 
 class InvalidAmountException(PaymentException):
     pass
+
+
+class PaymentProviderNameIsEmpty(PaymentException):
+    pass
+
+
+class PaymentContainerIsNotSet(PaymentException):
+    pass
+
+
+class PaymentProviderIsNotFound(PaymentException):
+    pass
