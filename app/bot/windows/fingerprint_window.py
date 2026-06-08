@@ -1,4 +1,5 @@
-from app.bot.windows.core.base import BaseWindow, WindowMessage
+from app.bot.windows.core.base_window import BaseWindow
+from app.bot.windows.core.window_message import WindowMessage
 from app.services.fingerprint_match import FingerprintMatchResult
 
 

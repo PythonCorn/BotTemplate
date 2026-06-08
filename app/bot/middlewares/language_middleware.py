@@ -1,18 +1,27 @@
-from aiogram.types import TelegramObject, User
+from aiogram.types import TelegramObject
 from aiogram.utils.i18n import I18nMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.services.container import ServiceContainer
+from app.bot.middlewares.user_middleware import TelegramUser
+from app.database.cruds.get_user_language import get_user_language
 
 
 class LanguageMiddleware(I18nMiddleware):
     async def get_locale(self, event: TelegramObject, data: dict) -> str:
-        services: ServiceContainer | None = data.get("services")
-        if services is None:
-            return "ru"
-
-        # Получаем user_id универсально
-        user: User | None = data.get("event_from_user")
+        user: TelegramUser | None = data.get("telegram_user")
         if user is None:
             return "ru"
 
-        return await services.users.get_user_language(user.id)
+        session_factory: async_sessionmaker[AsyncSession] | None = data.get("session_factory")
+
+        fallback_locale = user.language_code or "ru"
+
+        if session_factory is None:
+            return fallback_locale
+
+        user_language = await get_user_language(
+            user_id=user.id,
+            session_factory=session_factory,
+        )
+
+        return user_language or fallback_locale

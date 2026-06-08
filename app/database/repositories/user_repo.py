@@ -14,6 +14,6 @@ class UserRepo(BaseRepository[User]):
         return await self.session.scalar(stmt) or "ru"
 
     async def get_for_update(self, user_id: int) -> User | None:
-        stmt = select(User).where(User.id == user_id).with_for_update()
+        stmt = select(User).where(User.user_id == user_id).with_for_update()
         user: User | None = await self.session.scalar(stmt)
         return user

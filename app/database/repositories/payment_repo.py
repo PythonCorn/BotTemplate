@@ -1,20 +1,20 @@
 import logging
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.database.models import Payment
 from app.database.repositories.base import BaseRepository
-from app.infrastructure.payments.base import PaymentProviderName
+from app.infrastructure.payments.providers.core.enums import PaymentProviderName
 
 logger = logging.getLogger(__name__)
 
 
 class PaymentRepository(BaseRepository[Payment]):
     async def add_new_payment(
-        self, user_id: int, provider: PaymentProviderName, amount: Decimal
+        self, user_id: int, provider: PaymentProviderName | str, amount: Decimal
     ) -> Payment:
-        model = Payment(user_id=user_id, provider=provider, amount=amount)
+        model = Payment(user_id=user_id, provider=PaymentProviderName(provider), amount=amount)
         self.session.add(model)
         await self.session.flush()
         return model
@@ -24,3 +24,7 @@ class PaymentRepository(BaseRepository[Payment]):
         result = await self.session.scalar(stmt)
         logger.info(f"Payment {result}")
         return result
+
+    async def clear_table(self):
+        stmt = delete(Payment)
+        await self.session.execute(stmt)

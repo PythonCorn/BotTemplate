@@ -4,8 +4,8 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from starlette.responses import HTMLResponse
 
 from app.bot.windows.core.notifier import NotifyScamUser
-from app.core.app_state import AppState, get_app_state
 from app.core.config import settings
+from app.core.state import AppState, get_app_state
 from app.database.models import Fingerprint
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.fingerprint.build_fingerprint_hash import build_fingerprint_hash
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/webapp", response_class=HTMLResponse)
-async def get_captcha():
+async def get_captcha(request: Request):
     """
     Handles GET requests to the '/webapp' endpoint and returns an HTML response.
 
@@ -74,7 +74,7 @@ async def post_fingerprint(
 
     state: AppState = get_app_state(request)
 
-    async with UnitOfWork(state.container.session_factory) as uow:
+    async with UnitOfWork(state.session_factory) as uow:
         user = await uow.users.get_by_user_id(fingerprint.id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
@@ -115,7 +115,7 @@ async def post_fingerprint(
         await uow.commit()
 
         if settings.ADMIN_CHAT_ID is not None and len(matches) > 0:
-            notifier = NotifyScamUser(bot=state.container.bot, i18n=state.container.i18n)
+            notifier = NotifyScamUser(bot=state.bot, i18n=state.bot.i18n)
             await notifier.notify_admins(
                 chat_id=settings.ADMIN_CHAT_ID,
                 user_id=fingerprint.id,

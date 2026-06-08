@@ -4,25 +4,16 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.i18n import I18n
 from aiogram.utils.i18n import gettext as _
 
-from app.bot.windows.core.base import BaseWindow, WindowMessage
+from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.keyboards import back_button
-from app.infrastructure.payments import PaymentContainer
-from app.infrastructure.payments.base import Invoice, PaymentProviderName
+from app.bot.windows.core.window_message import WindowMessage
+from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.infrastructure.payments.providers.core.enums import PaymentProviderName
+from app.infrastructure.payments.providers.core.models import Invoice
 
 
 class PaymentCallbackData(CallbackData, prefix="payment"):
-    """
-    Handles callback data for payment operations.
-
-    This class is designed to structure and manage callback data specific
-    to payment functionalities. It extends the CallbackData class to
-    leverage its base functionality while providing a specialized context
-    for handling payment-related data.
-
-    Attributes:
-        prefix (str): The prefix used for identifying payment-specific
-            callback data.
-    """
+    pass
 
 
 class PaymentProvidersCallbackData(CallbackData, prefix="p_p"):
@@ -54,29 +45,12 @@ class PaymentWindows(BaseWindow):
     """
 
     def start(self, payment_container: PaymentContainer) -> WindowMessage:
-        """
-        Creates a message window with a keyboard layout for selecting a payment provider.
-
-        The function dynamically generates a keyboard with buttons for each available payment
-        provider specified in the `payment_container`. Providers that are operational
-        (as indicated by the `is_work` attribute) will have buttons created with their name
-        and corresponding callback data. Additionally, a back button is added to the keyboard.
-
-        Args:
-            payment_container (PaymentContainer): A container object that holds a list of
-                payment providers and their attributes, such as operational status and provider name.
-
-        Returns:
-            WindowMessage: A message object containing the caption and keyboard markup for
-                selecting a payment provider.
-        """
         keyboard = self.get_empty_keyboard()
         for provider in payment_container:
-            if provider.is_work:
-                keyboard.button(
-                    text=provider.name_provider.value,
-                    callback_data=PaymentProvidersCallbackData(provider=provider.name_provider),
-                )
+            keyboard.button(
+                text=provider.name_provider.value,
+                callback_data=PaymentProvidersCallbackData(provider=provider.name_provider),
+            )
         back_button(keyboard)
         return self.message(
             caption=_("Выберите платежную систему:"), reply_markup=keyboard.adjust(1).as_markup()
@@ -157,7 +131,7 @@ class PaymentWindows(BaseWindow):
             photo_filename="example.png",
         )
 
-    def payment_success(self, amount: Decimal, i18n: I18n, locale: str = "ru") -> WindowMessage:
+    def payment_success(self, amount: Decimal) -> WindowMessage:
         """
         Generates a localized success message for a payment operation and returns it
         as a `WindowMessage` object.
@@ -171,9 +145,10 @@ class PaymentWindows(BaseWindow):
             WindowMessage: A message object containing the localized confirmation text.
         """
         return self.message(
-            text=i18n.gettext(
-                "Ваш баланс успешно пополнен на сумму: {amount} USD", locale=locale
-            ).format(amount=amount.quantize(Decimal("0.01")))
+            text=self._(
+                "Ваш баланс успешно пополнен на сумму: {amount} USD",
+                amount=amount.quantize(Decimal("0.01")),
+            )
         )
 
     def payment_success_admin(

@@ -25,6 +25,7 @@ class FingerprintMatchResult:
     user_id: int
     fingerprint_id: int
     score: int
+    is_blocked: bool = False
 
 
 class FingerprintMatcherService:

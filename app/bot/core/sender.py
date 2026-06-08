@@ -12,7 +12,7 @@ from aiogram.types import (
 )
 
 from app.bot.core.file_formatting import FileFormatting
-from app.bot.windows.core.base import WindowMessage
+from app.bot.windows.core.window_message import WindowMessage
 
 logger = logging.getLogger(__name__)
 

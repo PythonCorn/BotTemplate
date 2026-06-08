@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any, TypeVar
 
 import orjson
@@ -8,8 +9,15 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class RedisCache:
-    def __init__(self, redis: Redis):
+    def __init__(
+        self,
+        redis: Redis,
+        telegram_state_ttl: int | timedelta | None = None,
+        telegram_data_ttl: int | timedelta | None = None,
+    ):
         self.redis = redis
+        self.telegram_state_ttl = telegram_state_ttl
+        self.telegram_data_ttl = telegram_data_ttl
 
     async def set(
         self,
@@ -58,3 +66,6 @@ class RedisCache:
             )
 
         return value
+
+    async def shutdown(self):
+        await self.redis.close()

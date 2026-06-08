@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 
 from app.database.models import Fingerprint, Payment, User
 from app.database.repositories.fingerprint import FingerprintRepository
@@ -11,6 +12,17 @@ class UnitOfWork:
         self.async_session_factory = async_session_factory
         self.session: AsyncSession | None = None
         self._committed = False
+
+    async def flush(self) -> None:
+        if self.session is None:
+            raise RuntimeError("Session is not initialized")
+        await self.session.flush()
+
+    async def refresh(self, *instances: DeclarativeBase) -> None:
+        if self.session is None:
+            raise RuntimeError("Session is not initialized")
+        for instance in instances:
+            await self.session.refresh(instance)
 
     async def commit(self) -> None:
         if self.session is None:

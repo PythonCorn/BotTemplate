@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from app.database.models import Payment, User
-from app.infrastructure.payments.base import PaymentProviderName, PaymentStatus
+from app.infrastructure.payments.providers.core.enums import PaymentProviderName, PaymentStatus
+from app.infrastructure.payments.providers.core.exceptions import InvalidAmountException
 from app.services.base import BaseService
 
 logger = logging.getLogger(__name__)
@@ -18,49 +19,20 @@ class PaymentPaidResult:
 
 
 class PaymentService(BaseService):
-    async def add_new_payment(
-        self,
-        user_id: int,
-        provider: PaymentProviderName,
-        amount: str,
-    ) -> Payment:
-        """
-        Adds a new payment record for a specified user with the given payment provider
-        and amount.
-
-        This method validates the provided payment amount and creates a payment
-        entry in the database through the unit of work.
-
-        Parameters:
-        user_id: int
-            The unique identifier of the user making the payment.
-        provider: PaymentProviderName
-            The payment provider through which the payment is processed.
-        amount: str
-            The payment amount to be processed. Must be convertible to a valid
-            decimal.
-
-        Returns:
-        Payment
-            Returns the created Payment object containing the information of the
-            newly created payment record.
-
-        Raises:
-        ValueError
-            Raised when the provided amount cannot be converted into a decimal.
-        """
+    async def create_payment(self, user_id: int, amount: str, provider: PaymentProviderName | str):
         try:
-            decimal_amount = Decimal(amount)
-        except InvalidOperation:
-            raise ValueError(f"Invalid payment amount: {amount}")  # noqa: B904
+            decimal_amount = Decimal(amount).quantize(Decimal("0.01"))
+        except InvalidOperation as err:
+            raise InvalidAmountException(f"Invalid payment amount: {amount}") from err
 
-        result = await self.uow.payments.add_new_payment(
+        payment: Payment = await self.uow.payments.add_new_payment(
             user_id=user_id,
             provider=provider,
             amount=decimal_amount,
         )
-        await self.uow.commit()
-        return result
+        logger.info(f"Payment created: {payment}")
+        await self.uow.flush()
+        return payment
 
     async def paid(self, payment_id: int) -> PaymentPaidResult:
         payment = await self.uow.payments.get_for_update(payment_id)

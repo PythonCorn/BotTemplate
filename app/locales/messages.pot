@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-03 09:21+0000\n"
+"POT-Creation-Date: 2026-06-07 13:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,3 +16,71 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: app/bot/windows/example.py:13
+msgid "Пополнить счет"
+msgstr ""
+
+#: app/bot/windows/example.py:17
+msgid "WebApp"
+msgstr ""
+
+#: app/bot/windows/example.py:21
+msgid "Проверка работы i18n"
+msgstr ""
+
+#: app/bot/windows/example.py:25
+msgid "Какой-то текст"
+msgstr ""
+
+#: app/bot/windows/example.py:29
+#, python-brace-format
+msgid "Example message {username}"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:82
+msgid "Выберите платежную систему:"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:97
+msgid "Это предупреждение!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:114
+msgid "Отправьте сумму для пополнения в USD"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:135
+#, python-brace-format
+msgid "Оплатить {amount} USD"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:137
+msgid "Отмена"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:139
+msgid "Оплатите сумму по кнопке ниже!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:155
+msgid "Вы ввели неверное значение. Попробуйте еще раз!"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:175
+#, python-brace-format
+msgid "Ваш баланс успешно пополнен на сумму: {amount} USD"
+msgstr ""
+
+#: app/bot/windows/payment_window.py:204
+#, python-brace-format
+msgid ""
+"Пополнение баланса!\n"
+"\n"
+"Пользователь: @{username}\n"
+"Telegram ID: {user_id}\n"
+"\n"
+"Сумма: {amount} USD\n"
+"Платежная система: {provider}\n"
+"\n"
+msgstr ""

@@ -1,7 +1,7 @@
 from aiogram.types import WebAppInfo
-from aiogram.utils.i18n import gettext as _
 
-from app.bot.windows.core.base import BaseWindow, WindowMessage
+from app.bot.windows.core.base_window import BaseWindow
+from app.bot.windows.core.window_message import WindowMessage
 from app.bot.windows.payment_window import PaymentCallbackData
 from app.core.config import settings
 
@@ -10,15 +10,23 @@ class ExampleWindow(BaseWindow):
     def start(self, username: str | None = None) -> WindowMessage:
         keyboard = self.get_empty_keyboard()
         keyboard.button(
-            text=_("Пополнить счет"),
+            text=self._("Пополнить счет"),
             callback_data=PaymentCallbackData(),
         )
         keyboard.button(
-            text=_("WebApp"),
+            text=self._("WebApp"),
             web_app=WebAppInfo(url=f"{settings.PUBLIC_URL}{settings.WEB_APP_PATH}"),
         )
+        keyboard.button(
+            text=self._("Проверка работы i18n"),
+            callback_data="i18n",
+        )
+        keyboard.button(
+            text=self._("Какой-то текст {username}", username=username),
+            callback_data="test",
+        )
         return WindowMessage(
-            caption=_("Example message {username}").format(username=username),
-            photo_filename="example.png",
+            caption=self._("Example message {username}", username=username),
             reply_markup=keyboard.adjust(1).as_markup(),
+            photo_filename="example.png",
         )
