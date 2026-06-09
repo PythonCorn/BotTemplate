@@ -2,16 +2,15 @@ from aiogram.types import WebAppInfo
 
 from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.window_message import WindowMessage
-from app.core.config import settings
 from app.services.fingerprint_match import FingerprintMatchResult
 
 
 class FingerprintWindow(BaseWindow):
-    def fingerprint_message(self, public_url: str | None) -> WindowMessage:
-        keyboard = self.get_empty_keyboard()
+    def fingerprint_message(self, public_url: str, web_app_path: str) -> WindowMessage:
+        keyboard = self.inline_keyboard()
         keyboard.button(
             text=self._("Условия"),
-            web_app=WebAppInfo(url=f"{public_url}{settings.WEB_APP_PATH}"),
+            web_app=WebAppInfo(url=f"{public_url}{web_app_path}"),
         )
         return self.message(
             caption=self._(

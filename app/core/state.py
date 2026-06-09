@@ -1,39 +1,39 @@
 from dataclasses import dataclass
 
+from aiogram import Dispatcher
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.datastructures import State
 
 from app.bot.core.base import TelegramBot
-from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.bot.core.sender import BotSender
+from app.infrastructure.payments.container import Payments
 
 
 @dataclass(slots=True)
-class AppState:
-    # Telegram states
+class ApplicationState:
     bot: TelegramBot
+    dispatcher: Dispatcher
+    base_url: str
+    sender: BotSender
 
-    # Database states
-    session_factory: async_sessionmaker[AsyncSession]
-    engine: AsyncEngine
-
-    # Payment states
-    payments: PaymentContainer | None = None
-
-    # Base url
-    base_url: str = ""
+    session_factory: async_sessionmaker[AsyncSession] | None = None
+    engine: AsyncEngine | None = None
+    payments: Payments | None = None
 
     async def shutdown(self) -> None:
-        await self.bot.shutdown()
-        await self.engine.dispose()
+        if self.bot.session is not None:
+            await self.bot.session.close()
+        if self.engine is not None:
+            await self.engine.dispose()
         if self.payments is not None:
             await self.payments.close()
 
 
-def get_app_state(request: Request[State]) -> AppState:
+def get_app_state(request: Request[State]) -> ApplicationState:
     state = getattr(request.app.state, "app_state", None)
 
-    if not isinstance(state, AppState):
+    if not isinstance(state, ApplicationState):
         raise RuntimeError("AppState is not set in request.app.state")
 
     return state

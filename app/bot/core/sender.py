@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING, Any
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import (
@@ -11,13 +12,119 @@ from aiogram.types import (
     Update,
 )
 
+if TYPE_CHECKING:
+    from app.bot.core.base import TelegramBot
+
 from app.bot.core.file_formatting import FileFormatting
 from app.bot.windows.core.window_message import WindowMessage
 
 logger = logging.getLogger(__name__)
 
 
-class Sender:
+class BotSender:
+    def __init__(self, bot: "TelegramBot", formatter: FileFormatting):
+        self.bot = bot
+        self.formatter = formatter
+
+    async def add_message_to_cache(
+        self, chat_id: int, message_id: int, key: str, ttl: int = 60 * 5
+    ):
+        if self.formatter.cache is not None:
+            await self.formatter.cache.set(name=f"{key}:{chat_id}", value=message_id, ex=ttl)
+            logger.info("Message_id add to cache - %d", message_id)
+
+    async def delete_message_in_chat(self, chat_id: int, key: str):
+        message_id = await self._get_message_id_from_cache(key, chat_id)
+        if isinstance(message_id, bytes):
+            message_id = message_id.decode()
+        if message_id is not None and isinstance(message_id, str) and message_id.isdigit():
+            try:
+                await self.bot.delete_message(chat_id=chat_id, message_id=int(message_id))
+                logger.info("Message %d deleted from chat %d", int(message_id), chat_id)
+                await self.formatter.cache.delete(f"{key}:{chat_id}")
+            except TelegramBadRequest:
+                logger.exception(
+                    "Can't delete message in chat %d, message_id %d", chat_id, message_id
+                )
+
+    async def send_message_to_chat(self, chat_id: int, message: WindowMessage):
+        if message.photo_filename is not None:
+            photo = await self.formatter.get_photo(message.photo_filename)
+            send = self.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=message.caption,
+                reply_markup=message.reply_markup,
+            )
+        else:
+            send = self.bot.send_message(
+                chat_id=chat_id, text=message.text, reply_markup=message.reply_markup
+            )
+        try:
+            await send
+        except Exception as e:
+            logger.exception("Failed to send message: %s", e)
+
+    async def edit_message_in_chat(self, chat_id: int, key: str, message: WindowMessage):
+        message_id = await self._get_message_id_from_cache(key, chat_id)
+        if message_id is None:
+            await self.send_message_to_chat(chat_id, message)
+            await self.delete_message_in_chat(chat_id, key)
+            return None
+        try:
+            if message.photo_filename is not None:
+                return await self._edit_message_media(chat_id, message_id, message)
+
+            return await self._edit_message_caption(chat_id, message_id, message)
+        except Exception as e:
+            logger.exception("Failed to send message: %s", e)
+            try:
+                return await self._edit_message_text(chat_id, message_id, message)
+            except Exception as e:
+                logger.exception("Failed to send message: %s", e)
+
+    async def _get_message_id_from_cache(self, key: str, chat_id: int) -> int | None:
+        if self.formatter.cache is None:
+            return None
+        message_id: Any = await self.formatter.cache.get(f"{key}:{chat_id}")
+        if isinstance(message_id, bytes):
+            message_id = message_id.decode()
+        if message_id is not None and isinstance(message_id, str) and message_id.isdigit():
+            return int(message_id)
+        return None
+
+    async def _edit_message_media(self, chat_id: int, message_id: int, message: WindowMessage):
+        photo = await self.formatter.get_photo(message.photo_filename)  # type: ignore
+        return await self.bot.edit_message_media(
+            chat_id=chat_id,
+            message_id=message_id,
+            media=InputMediaPhoto(
+                media=photo,
+                caption=message.caption,
+            ),
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+    async def _edit_message_caption(self, chat_id: int, message_id: int, message: WindowMessage):
+        caption = message.caption if message.caption != "" else message.text
+        return await self.bot.edit_message_caption(
+            chat_id=chat_id,
+            message_id=message_id,
+            caption=caption,
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+    async def _edit_message_text(self, chat_id: int, message_id: int, message: WindowMessage):
+        text = message.text if message.text != "" else message.caption
+        return await self.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=message.reply_markup,  # type: ignore
+        )
+
+
+class Sender(BotSender):
     """
     Handles event management and message formatting for sending and editing messages.
 
@@ -33,7 +140,9 @@ class Sender:
             to process and format message-related data.
     """
 
-    def __init__(self, event: TelegramObject | Update, formatter: FileFormatting) -> None:
+    def __init__(
+        self, event: TelegramObject | Update, formatter: FileFormatting, bot: "TelegramBot"
+    ) -> None:
         """
         Initializes an instance of the class to process a Telegram event with a specified
         formatter. This handles both `Update` objects and generic `TelegramObject`.
@@ -48,7 +157,9 @@ class Sender:
         formatter (FileFormatting): The formatter instance to be used for processing.
 
         """
+        super().__init__(bot=bot, formatter=formatter)
         self.event: Message | CallbackQuery | None = None
+        self.bot = bot
 
         if isinstance(event, Update):
             if event.message is not None:

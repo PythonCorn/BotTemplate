@@ -1,90 +1,195 @@
 import logging
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
+from aiogram import Dispatcher
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.utils.i18n import I18n
 from fastapi import FastAPI
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.bot.core.base import TelegramBot
+from app.bot.core.file_formatting import FileFormatting
+from app.bot.core.sender import BotSender
+from app.bot.middlewares.i18n_middleware import I18nMiddleware
+from app.bot.middlewares.sender_middleware import SenderMiddleware
+from app.bot.middlewares.service_middleware import ServiceMiddleware
+from app.bot.middlewares.session_factory_middleware import SessionFactoryMiddleware
+from app.bot.windows.core.container import Windows
 from app.core.logger import setup_logging
-from app.core.state import AppState
-from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.core.state import ApplicationState
+from app.infrastructure.cache.redis import RedisCache
+from app.infrastructure.payments.container import Payments
+from app.ngrok.get_ngrok_url import get_ngrok_public_url
+from app.services.container import Services
 
 
-class BaseApp(FastAPI):
+class App(FastAPI):
     def __init__(
         self,
-        app_state: AppState | None = None,
-        public_url: str | None = None,
-        title: str = "Bot Template",
-        debug: bool = False,
-        openapi_url: str | None = None,
-        swagger_ui_oauth2_redirect_url: str | None = None,
-        lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] | None = None,
+        bot: TelegramBot,
+        windows: Windows | None = None,
+        services: Services | None = None,
+        payments: Payments | None = None,
+        redis: Redis | None = None,
+        base_url: str | None = None,
+        ngrok: bool = False,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
+        engine: AsyncEngine | None = None,
         logger_level: str = "INFO",
-        json_logs: bool = False,
+        **kwargs,
     ):
-        self._app_state: AppState | None = app_state
-        self._public_url = public_url.rstrip("/") if public_url else None
-        super().__init__(
-            title=title,
-            lifespan=lifespan if lifespan is not None else self._lifespan,
-            debug=debug,
-            openapi_url=openapi_url,
-            swagger_ui_oauth2_redirect_url=swagger_ui_oauth2_redirect_url,
-        )
-
-        if debug:
-            logger_level = "DEBUG"
         self._logger_level = logger_level
-        self._json_logs = json_logs
+        self.logger = self._setup_logger()
 
-        self._setup_logger()
-        self._logger.info("Logger is initialized")
+        self.base_url = base_url
+        self._bot = bot
+        self._redis = redis
+        self._cache = RedisCache(redis=redis) if redis is not None else None
+        self._ngrok = ngrok
+        self._session_factory = session_factory
+        self._engine = engine
+        self._windows = windows
+        self._services = services
+        self._payments = payments
 
-        if self._app_state is not None:
-            self.state.app_state = self._app_state
+        storage = RedisStorage(redis=redis) if redis is not None else None
+        self._dispatcher = Dispatcher(storage=storage)
 
-    def _setup_logger(self):
-        setup_logging(level=self._logger_level, json_logs=self._json_logs)
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(self._logger_level.upper())
+        if session_factory is not None:
+            self._include_session_factory_middleware(session_factory=session_factory)
 
-    @property
-    def app(self) -> FastAPI:
-        return self
+        if windows is not None:
+            self._bot.windows = windows
+            if session_factory is not None:
+                self._include_i18n_middleware(session_factory=session_factory)
+            if redis is not None:
+                self._include_sender_middleware(redis=redis)
 
-    @property
-    def app_state(self) -> AppState | None:
-        return self._app_state
+        if services is not None and session_factory is not None:
+            self._include_service_middleware(services, session_factory)
+
+        super().__init__(
+            debug=logger_level.upper() == "DEBUG",
+            openapi_url=None,
+            lifespan=self._lifespan,
+            **kwargs,
+        )
 
     @property
     def bot(self) -> TelegramBot:
-        if self.app_state is None:
-            raise RuntimeError("AppState is not initialized")
-        return self.app_state.bot
+        return self._bot
+
+    @property
+    def dispatcher(self) -> Dispatcher:
+        return self._dispatcher
+
+    @property
+    def app_state(self) -> ApplicationState:
+        state = self.state.app_state
+        if isinstance(state, ApplicationState):
+            return state
+        raise RuntimeError("AppState is not set in request.app.state")
+
+    @app_state.setter
+    def app_state(self, app_state: ApplicationState):
+        if not isinstance(app_state, ApplicationState):
+            raise TypeError("app_state must be an instance of ApplicationState")
+        self.state.app_state = app_state
+
+    @property
+    def session_factory(self) -> async_sessionmaker[AsyncSession] | None:
+        return self._session_factory
+
+    @property
+    def engine(self) -> AsyncEngine | None:
+        return self._engine
+
+    @property
+    def windows(self) -> Windows | None:
+        return self._windows
+
+    @property
+    def cache(self) -> RedisCache | None:
+        return self._cache
+
+    @property
+    def i18n(self) -> I18n | None:
+        return getattr(self.windows, "i18n", None)
+
+    @property
+    def services(self) -> Services | None:
+        return self._services
+
+    @property
+    def payments(self) -> Payments:
+        if self._payments is None:
+            raise ValueError("Payments are not set")
+        return self._payments
 
     @asynccontextmanager
-    async def _lifespan(self, app: FastAPI) -> AsyncIterator[None]:
-        self._logger.info("Application startup started")
+    async def _lifespan(self, app: "App") -> AsyncIterator[None]:
+        self.logger.info("Application startup started")
         try:
-            state = getattr(app.state, "app_state", None)
-            if not isinstance(state, AppState):
-                raise RuntimeError("AppState is not set in the request")
-            base_url = await state.bot.setup_webhook(public_url=self._public_url)
-            state.base_url = base_url
-            payments: PaymentContainer | None = state.payments
-            if isinstance(payments, PaymentContainer):
-                for payment in payments:
-                    logging.info(
-                        f"Payment {payment.name_provider.value} set webhook: {base_url}{payment.provider_webhook_path}"
+            base_url = await self._setup_base_url()
+
+            webhook_bot = await self.bot.setup_webhook(public_url=base_url)
+            self.logger.info(f"Webhook bot: {webhook_bot}")
+
+            app.app_state = ApplicationState(
+                bot=self.bot,
+                dispatcher=self.dispatcher,
+                base_url=base_url,
+                session_factory=self.session_factory,
+                engine=self.engine,
+                sender=BotSender(bot=self.bot, formatter=FileFormatting(redis=self._redis)),
+                payments=self.payments,
+            )
+
+            self.bot.payments = self.payments
+            if self.payments is not None:
+                for payment in self.payments:
+                    self.logger.info(
+                        f"Payment provider: {payment.name_provider} | Path: {base_url}{payment.provider_webhook_path}"
                     )
-            if state.payments is not None:
-                state.bot.payment_container = state.payments
+
             yield
         finally:
-            self._logger.info("Application shutdown started")
+            self.logger.info("Application shutdown started")
+            await app.app_state.shutdown()
+            self.logger.info("Application shutdown finished")
 
-            state = getattr(app.state, "app_state", None)
-            if isinstance(state, AppState):
-                await state.shutdown()
-            self._logger.info("Application shutdown finished")
+    async def _setup_base_url(self) -> str:
+        if self.base_url is None and not self._ngrok:
+            raise RuntimeError("Base URL is not set")
+        base_url = self.base_url or await get_ngrok_public_url()
+        if base_url is None:
+            raise RuntimeError("Base URL is not set! Set public_url or ngrok=True")
+        return base_url
+
+    def _setup_logger(self):
+        setup_logging(level=self._logger_level, json_logs=False)
+        logger = logging.getLogger(__name__)
+        logger.setLevel(self._logger_level.upper())
+        return logger
+
+    def _include_i18n_middleware(self, session_factory: async_sessionmaker[AsyncSession]):
+        self.dispatcher.update.middleware(
+            I18nMiddleware(bot=self.bot, session_factory=session_factory)
+        )
+
+    def _include_session_factory_middleware(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ):
+        self.dispatcher.update.middleware(SessionFactoryMiddleware(session_factory=session_factory))
+
+    def _include_sender_middleware(self, redis: Redis):
+        self.dispatcher.update.middleware(SenderMiddleware(formatter=FileFormatting(redis=redis)))
+
+    def _include_service_middleware(
+        self, services: Services, session_factory: async_sessionmaker[AsyncSession]
+    ):
+        self.dispatcher.update.middleware(
+            ServiceMiddleware(services=services, session_factory=session_factory)
+        )

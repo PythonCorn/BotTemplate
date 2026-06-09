@@ -8,8 +8,8 @@ from app.database.repositories.user_repo import UserRepo
 
 
 class UnitOfWork:
-    def __init__(self, async_session_factory: async_sessionmaker[AsyncSession]):
-        self.async_session_factory = async_session_factory
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
+        self.session_factory = session_factory
         self.session: AsyncSession | None = None
         self._committed = False
 
@@ -36,7 +36,7 @@ class UnitOfWork:
         await self.session.rollback()
 
     async def __aenter__(self) -> "UnitOfWork":
-        self.session = self.async_session_factory()
+        self.session = self.session_factory()
 
         if self.session is None:
             raise RuntimeError("Session is not initialized")

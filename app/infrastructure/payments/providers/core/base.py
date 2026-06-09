@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
+from app.api.routes import routes
 from app.infrastructure.payments.providers.core.enums import PaymentProviderName
 from app.infrastructure.payments.providers.core.models import Invoice, PaymentPayload
 
 
 class PaymentProvider(ABC):
-    base_webhook_path: ClassVar[str] = "/webhook/payment/"
+    base_webhook_path: ClassVar[str] = routes.payment_path
     provider_webhook_path: str
     name_provider: PaymentProviderName
 

@@ -7,26 +7,7 @@ from app.infrastructure.payments.providers.cryptobot import CryptobotProvider
 
 
 @dataclass(slots=True)
-class PaymentContainer:
-    """
-    PaymentContainer class.
-
-    A container class for handling multiple payment providers. Provides mechanisms
-    to iterate over the available providers, retrieve a specific provider by name,
-    and close all providers asynchronously.
-
-    Attributes:
-        cryptobot (CryptobotProvider | None): An optional payment provider.
-
-    Methods:
-        __iter__(): Returns an iterator over the non-None payment providers in the
-        container.
-
-        close(): Asynchronously closes all payment providers in the container.
-
-        get(name: PaymentProviderName): Retrieves a payment provider based on its name.
-    """
-
+class Payments:
     cryptobot: CryptobotProvider | None = None
 
     def __iter__(self) -> Iterator[PaymentProvider]:
@@ -39,7 +20,7 @@ class PaymentContainer:
         """
         for field in fields(self):
             provider = getattr(self, field.name)
-            if provider is not None:
+            if provider is not None and isinstance(provider, PaymentProvider):
                 yield provider
 
     async def close(self) -> None:

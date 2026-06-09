@@ -37,7 +37,7 @@ class PaymentService(BaseService):
         await self.uow.commit()
         return payment
 
-    async def paid(self, payment_id: int) -> PaymentPaidResult:
+    async def check_paid(self, payment_id: int) -> PaymentPaidResult:
         payment = await self.uow.payments.get_for_update(payment_id)
 
         if payment is None:

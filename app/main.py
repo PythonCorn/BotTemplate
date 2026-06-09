@@ -2,49 +2,26 @@ from aiogram.utils.i18n import I18n
 from redis.asyncio import Redis
 from starlette.responses import FileResponse
 
-from app.api import api, health, webhook
+from app.api import api
 from app.bot.core.base import TelegramBot
 from app.bot.handlers import payment_handler, start_handler
-from app.core.base import BaseApp
+from app.bot.windows.core.container import Windows
+from app.core.base import App
 from app.core.config import settings
-from app.core.state import AppState
-from app.database.session import async_engine, async_session_factory
-from app.infrastructure.cache.redis import RedisCache
-from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.database.session import engine, session_factory
+from app.infrastructure.payments.container import Payments
 from app.infrastructure.payments.providers.cryptobot import CryptobotProvider
-from app.services.payment_service import PaymentService
-from app.services.user_service import UserService
+from app.services.container import Services
 
-i18n = I18n(path="app/locales", default_locale="ru")
-
-
-redis = RedisCache(
-    redis=Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        db=settings.REDIS_DB,
-        password=settings.REDIS_PASSWORD or None,
-    )
-)
-
-bot = TelegramBot(
-    token=settings.BOT_TOKEN,
-    i18n=i18n,
-    redis=redis,
-    secret_token=settings.TELEGRAM_WEBHOOK_SECRET_TOKEN,
-    session_factory=async_session_factory,
-    fingerprint=True,
-)
-
-payment_container = PaymentContainer(cryptobot=CryptobotProvider(token=settings.CRYPTOBOT_TOKEN))
-
-app = BaseApp(
-    app_state=AppState(
-        bot=bot,
-        session_factory=async_session_factory,
-        engine=async_engine,
-        payments=payment_container,
-    )
+app = App(
+    bot=TelegramBot(token=settings.BOT_TOKEN, drop_pending_updates=True),
+    ngrok=True,
+    session_factory=session_factory,
+    engine=engine,
+    windows=Windows(i18n=I18n(path="app/locales", default_locale="ru")),
+    services=Services(),
+    redis=Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB),
+    payments=Payments(cryptobot=CryptobotProvider(token=settings.CRYPTOBOT_TOKEN)),
 )
 
 
@@ -53,16 +30,7 @@ async def favicon():
     return FileResponse("app/static/favicon.ico")
 
 
-# FastApi Routers
-app.include_router(router=webhook.router)
-app.include_router(router=health.router)
 app.include_router(router=api.router)
 
-# Bot routers
-bot.include_router(router=start_handler.router)
-bot.include_router(router=payment_handler.router)
-
-# Bot middlewares
-
-bot.include_services(users=UserService)
-bot.include_services(payments=PaymentService)
+app.dispatcher.include_router(start_handler.router)
+app.dispatcher.include_router(payment_handler.router)

@@ -37,7 +37,9 @@ class CryptobotProvider(PaymentProvider):
         if token is None:
             raise NotTokenException("CRYPTOBOT_TOKEN is not set")
         self.token = token
-        self.provider_webhook_path: str = f"{self.base_webhook_path}{self.name_provider.value}"
+        self.provider_webhook_path: str = self.base_webhook_path.format(
+            provider_name=self.name_provider.value
+        )
         self.provider = AioCryptoPay(token=token, network=network)
 
     async def create_invoice(

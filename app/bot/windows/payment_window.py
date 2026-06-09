@@ -5,7 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 from app.bot.windows.core.base_window import BaseWindow
 from app.bot.windows.core.keyboards import StartCallbackData, back_button
 from app.bot.windows.core.window_message import WindowMessage
-from app.infrastructure.payments.providers.core.container import PaymentContainer
+from app.infrastructure.payments.container import Payments
 from app.infrastructure.payments.providers.core.enums import PaymentAsset, PaymentProviderName
 from app.infrastructure.payments.providers.core.models import Invoice
 
@@ -42,8 +42,8 @@ class PaymentWindows(BaseWindow):
         None
     """
 
-    def start(self, payment_container: PaymentContainer | None = None) -> WindowMessage:
-        keyboard = self.get_empty_keyboard()
+    def start(self, payment_container: Payments | None = None) -> WindowMessage:
+        keyboard = self.inline_keyboard()
         if payment_container is None:
             caption = self._("Платежные провайдеры пока не подключены!")
         else:
@@ -82,7 +82,7 @@ class PaymentWindows(BaseWindow):
             WindowMessage: The message object containing the prompt caption
             and the configured inline keyboard.
         """
-        keyboard = self.get_empty_keyboard()
+        keyboard = self.inline_keyboard()
         back_button(keyboard, callback_data=PaymentCallbackData())
         return self.message(
             caption=self._("Отправьте сумму для пополнения в {asset}").format(
@@ -106,7 +106,7 @@ class PaymentWindows(BaseWindow):
             cancellation option, and a caption instructing the user to complete
             the payment.
         """
-        keyboard = self.get_empty_keyboard()
+        keyboard = self.inline_keyboard()
         keyboard.button(
             text=self._("Оплатить {amount} {asset}").format(
                 amount=invoice.amount, asset=PaymentAsset.USD.value
@@ -128,7 +128,7 @@ class PaymentWindows(BaseWindow):
             WindowMessage: A message object containing the error caption, a back button for
                 navigation, and an optional image to enhance the user experience.
         """
-        keyboard = self.get_empty_keyboard()
+        keyboard = self.inline_keyboard()
         back_button(keyboard, callback_data="start")
         return self.message(
             caption=self._("Вы ввели неверное значение. Попробуйте еще раз!"),
@@ -149,7 +149,7 @@ class PaymentWindows(BaseWindow):
         Returns:
             WindowMessage: A message object containing the localized confirmation text.
         """
-        keyboard = self.get_empty_keyboard()
+        keyboard = self.inline_keyboard()
         keyboard.button(
             text=self._("В меню"),  # noqa: RUF001
             callback_data=StartCallbackData(),

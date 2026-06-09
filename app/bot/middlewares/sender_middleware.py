@@ -18,5 +18,5 @@ class SenderMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        data["sender"] = Sender(event=event, formatter=self.formatter)
+        data["sender"] = Sender(event=event, formatter=self.formatter, bot=data["bot"])
         return await handler(event, data)

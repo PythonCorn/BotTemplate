@@ -6,15 +6,13 @@ from aiogram.types import TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.database.unit_of_work import UnitOfWork
-from app.services.base import BaseService
+from app.services.container import Services
 
 
 class ServiceMiddleware(BaseMiddleware):
-    def __init__(
-        self,
-        **services: type[BaseService],
-    ) -> None:
+    def __init__(self, services: Services, session_factory: async_sessionmaker[AsyncSession]):
         self.services = services
+        self.session_factory = session_factory
 
     async def __call__(
         self,
@@ -22,11 +20,7 @@ class ServiceMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        session_factory: async_sessionmaker[AsyncSession] | None = data.get("session_factory")
-        if session_factory is None:
-            raise RuntimeError("Session factory is not initialized")
         async with UnitOfWork(data["session_factory"]) as uow:
             data["uow"] = uow
-            for service_name, service_class in self.services.items():
-                data[service_name] = service_class(uow)
+            data["services"] = self.services(uow)
             return await handler(event, data)
