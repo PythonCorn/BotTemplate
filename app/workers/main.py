@@ -6,6 +6,9 @@ from aiogram.utils.i18n import I18n
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.backup.base import S3Backup
+from app.backup.postgres_dump import make_postgres_dump
+from app.backup.s3_client import S3Client
 from app.bot.core.base import TelegramBot
 from app.core.config import settings
 from app.core.logger import setup_logging
@@ -56,17 +59,27 @@ async def main():
     """
     scheduler: AsyncIOScheduler = create_scheduler()
 
-    # Add your jobs here
-    # scheduler.add_job(
-    #     my_task,
-    #     trigger="interval",
-    #     minutes=1,
-    #     id="my_task",
-    #     replace_existing=True,
-    # )
+    postgres_file_name = await make_postgres_dump(
+        postgres_name=settings.POSTGRES_DB,
+        postgres_host=settings.POSTGRES_HOST,
+        postgres_port=settings.POSTGRES_PORT,
+        postgres_user=settings.POSTGRES_USER,
+        postgres_password=settings.POSTGRES_PASSWORD,
+        extra_name="example",
+    )
 
-    if settings.BACKUP_CHAT_ID is not None:
-        backup_worker(scheduler, BOT)
+    backup_client = S3Backup(
+        s3_client=S3Client(
+            bucket_name=settings.S3_BUCKET_NAME,
+            access_key=settings.S3_ACCESS_KEY,
+            secret_key=settings.S3_SECRET_KEY,
+            region=settings.S3_REGION,
+            endpoint_url=settings.S3_ENDPOINT_URL,
+        )
+    )
+
+    backup_worker(scheduler, backup_client, postgres_file_name, hours=1)
+    await backup_client.send(file_path=postgres_file_name)
 
     scheduler.start()
 

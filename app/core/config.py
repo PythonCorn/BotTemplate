@@ -27,6 +27,12 @@ class Settings(BaseSettings):
 
     WEB_APP_PATH: str | None = "/api/webapp"
 
+    S3_BUCKET_NAME: str
+    S3_ACCESS_KEY: str
+    S3_SECRET_KEY: str
+    S3_ENDPOINT_URL: str
+    S3_REGION: str
+
     @property
     def POSTGRES_URI(self):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
