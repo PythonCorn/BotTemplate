@@ -6,12 +6,12 @@ from aiogram.utils.i18n import I18n
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.backup.base import S3Backup
-from app.backup.postgres_dump import make_postgres_dump
-from app.backup.s3_client import S3Client
 from app.bot.core.base import TelegramBot
 from app.core.config import settings
 from app.core.logger import setup_logging
+from app.workers.backup.base import S3Backup
+from app.workers.backup.postgres_dump import make_postgres_dump
+from app.workers.backup.s3_client import S3Client
 from app.workers.backup_worker import backup_worker
 from app.workers.scheduler import create_scheduler
 

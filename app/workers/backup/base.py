@@ -4,7 +4,7 @@ from pathlib import Path
 from aiogram import Bot
 from aiogram.types import FSInputFile
 
-from app.backup.s3_client import S3Client
+from app.workers.backup.s3_client import S3Client
 
 
 class BaseBackup(ABC):

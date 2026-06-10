@@ -3,7 +3,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.backup.base import BaseBackup
+from app.workers.backup.base import BaseBackup
 
 logger = logging.getLogger(__name__)
 
